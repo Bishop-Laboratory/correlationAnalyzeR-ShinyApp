@@ -1,0 +1,26 @@
+{
+    "collab_server" : "",
+    "contents" : "",
+    "created" : 1559742891000.000,
+    "dirty" : false,
+    "encoding" : "UTF-8",
+    "folds" : "",
+    "hash" : "1459947046",
+    "id" : "A0609796",
+    "lastKnownWriteTime" : 1565150923,
+    "last_content_update" : 1565150923542,
+    "path" : "C:/Users/mille/Box Sync/Henry_Miller/Publications/Software/Shiny_Apps/correlationAnalyzeR-ShinyApp/scripts/helpers.R",
+    "project_path" : "scripts/helpers.R",
+    "properties" : {
+        "cursorPosition" : "214,0",
+        "scrollLine" : "192",
+        "tempName" : "Untitled1"
+    },
+    "read_only" : false,
+    "read_only_alternatives" : [
+    ],
+    "relative_order" : 2,
+    "source_on_save" : false,
+    "source_window" : "",
+    "type" : "r_source"
+}
