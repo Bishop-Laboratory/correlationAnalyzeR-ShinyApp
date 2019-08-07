@@ -294,8 +294,12 @@ singleModePlots <- function(input, output, session,
           plotly::layout(dragmode = "select")
         s <- input$correlationData_rows_selected
         if (length(s)) {
+          d2 <- correlationData[,c(1,3,4)]
+          d2 <- unique(d2)
+          colnames(d2)[3] <- "vals"
+          # correlationData$vals[s]
           p <- p %>%
-            plotly::add_segments(x = correlationData$vals[s], xend = correlationData$vals[s], y = 0,
+            plotly::add_segments(x = d2$vals[s], xend = d2$vals[s], y = 0,
                                  yend = 3000, color = "FF0404")
         } 
         p
