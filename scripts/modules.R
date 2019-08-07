@@ -4,14 +4,13 @@ library(heatmaply)
 library(DT)
 source("scripts/helpers.R")
 
-
 ## Generic helper modules ##
 # Input types
 singleGeneInputUI <- function(id) {
   ns <- NS(id)
   selectizeInput(inputId = ns("primaryGene"), label = "Gene name",
                  choices = NULL, 
-                 multiple = F, options = list(maxOptions = 25))
+                 multiple = F, options = list(maxOptions = 100))
 }
 
 singleGeneInput <- function(input, output, session, 
@@ -30,8 +29,8 @@ singleGeneInput <- function(input, output, session,
                            inputId = 'primaryGene',
                            choices = mouseGeneOptions[order(mouseGeneOptions)],
                            server = TRUE, selected = "Brca1",
-                           label = "Select gene",
-                           options = list(maxOptions = 25))
+                           label = "Select gene", 
+                           options = list(maxOptions = 100))
       
     } else if (speciesSelected == "Human") {
       updateSelectizeInput(session = session,
@@ -39,7 +38,7 @@ singleGeneInput <- function(input, output, session,
                            label = "Select gene",
                            choices = humanGeneOptions[order(humanGeneOptions)],
                            server = TRUE, selected = "BRCA1",
-                           options = list(maxOptions = 25))
+                           options = list(maxOptions = 100))
     }
   })
   # Pass the value of 'primaryGene' backwards to the parent module
@@ -51,9 +50,7 @@ multiGeneInputUI <- function(id) {
   ns <- NS(id)
   textAreaInput(inputId = ns("secondaryGenes"), resize = "none",
                 label = "Secondary genes/pathway", height = "150px",
-                placeholder = paste("Input gene list:\n\ne.g.\nATM\n",
-                                    "BRCA1\nTP53\n\nor official MSIGDB",
-                                    "geneset name:\n\ne.g.\nBIOCARTA_PROTEASOME_PATHWAY",
+                placeholder = paste("ATM\nBRCA1\nTP53\nFANCA\nATR\n...",
                                     sep=""))
 }
 
@@ -526,14 +523,6 @@ pairedModeAnalysis <- function(input, output, session,
     secondaryGenes <- strsplit(secondaryGenes, split = "\n")
     secondaryGenes <- unlist(secondaryGenes, use.names = F)
     print(secondaryGenes)
-    # # Bug testing
-    # primaryGene <- "BRCA1"
-    # species <- "Human"
-    # sampleType <- "Normal_Tissues"
-    # secondaryGenes <- c("ATM", "RIF1", "NFE2L2")
-    # GlobalData <- GlobalData
-    # sigTest <- TRUE
-    
     # Validate inputs
     shiny::validate(
       need(primaryGene != "", "Please select a gene")
@@ -549,6 +538,12 @@ pairedModeAnalysis <- function(input, output, session,
                             sampleType = sampleType,
                             GlobalData = GlobalData,
                             session = session)
+    if (sigTest & length(cleanRes$secondaryGenes) < 2) {
+      showNotification(ui = "Significance testing requires 2+ secondary genes", 
+                       duration = 60, type = 'error')
+      sigTest <- FALSE
+      
+    }
     pairedGenesList <- list(cleanRes$secondaryGenes)
     names(pairedGenesList) <- cleanRes$primaryGene
     
@@ -827,7 +822,7 @@ topologyModeAnalysis <- function(input, output, session,
     data <- correlationAnalyzeR::analyzeGenesetTopology(genesOfInterest = cleanRes$secondaryGenes, 
                                                         alternativeTSNE = T, 
                                                         returnDataOnly = T, 
-                                                        pathwayEnrichment = F,
+                                                        pathwayEnrichment = F, 
                                                         crossComparisonType = crossComparisonType,
                                                         Sample_Type = cleanRes$sampleType, 
                                                         Species = cleanRes$selectedSpecies)
@@ -847,6 +842,14 @@ topologyModePlotsUI <- function(id) {
       br(),
       tabsetPanel(#type = "pills",
         id = ns("topologyNavs"),
+        tabPanel(
+          title = "Topology analysis",
+          value = ns("aboutTab"),
+          fluidPage(
+            br(),
+            includeHTML("www/topologyAbout.html")
+          )
+        ),
         tabPanel(
           title = "Dimension reduction", 
           value = "dimReduction",

@@ -19,7 +19,8 @@ symbolConverter <- function(symbolVec, species) {
   # Provide a vector of gene symbols to check and convert
   
   # # Bug testing
-  # symbolVec <- c("Asxl1", "SON", "ASDJN", "NRF2", "DHX9", "SRSF2", "SF3B1")
+  # species <- "hsapiens"
+  # symbolVec <- c("Asxl1", "CGAS", "RPA", "SON", "ASDJN", "NRF2", "DHX9", "SRSF2", "SF3B1")
   # symbolVec <- selectedGenes
   
   n <- length(symbolVec)

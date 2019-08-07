@@ -19,61 +19,64 @@ GlobalData <- list("HS_basicGeneInfo" = HS_basicGeneInfo,
                    'humanGeneOptions' = humanGeneOptions,
                    'mouseGeneOptions' = mouseGeneOptions)
 
-ui <- navbarPage(
-  theme = shinytheme("united"),
-  title = "Correlation AnalyzeR",
-  tabPanel(
-    title = "About",
-    value = "aboutTab",
-    fluidPage(
-      br(),
-      includeHTML("www/homepage.html")
-    )
-  ),
-  tabPanel(
-    title = "Single mode",
-    value = "singleModeTab",
-    sidebarLayout(
-      sidebarPanel(
-        width = 2,
-        singleModeAnalysisUI("singleModeAnalysis")
-      ),
-      mainPanel(
-        width = 10,
-        singleModePlotsUI("singleModePlots")
+ui <- tagList(
+  tags$head(tags$link(rel="shortcut icon", href="/www/favicon.ico")),
+  navbarPage(
+    theme = shinytheme("united"),
+    title = "Correlation AnalyzeR",
+    tabPanel(
+      title = "About",
+      value = "aboutTab",
+      fluidPage(
+        br(),
+        includeHTML("www/homepage.html")
       )
-    )
-  ),
-  tabPanel(
-    title = "Paired mode",
-    value = "pairedModeTab",
-    sidebarLayout(
-      sidebarPanel(
-        width = 2,
-        pairedModeAnalysisUI("pairedModeAnalysis")
-      ),
-      mainPanel(
-        width = 10,
-        pairedModePlotsUI("pairedModePlots")
+    ),
+    tabPanel(
+      title = "Single mode",
+      value = "singleModeTab",
+      sidebarLayout(
+        sidebarPanel(
+          width = 2,
+          singleModeAnalysisUI("singleModeAnalysis")
+        ),
+        mainPanel(
+          width = 10,
+          singleModePlotsUI("singleModePlots")
+        )
       )
-    )
-  ),
-  tabPanel(
-    title = "Topology mode",
-    value = "topologyModeTab",
-    sidebarLayout(
-      sidebarPanel(
-        width = 2,
-        topologyModeAnalysisUI("topologyModeAnalysis")
-      ),
-      mainPanel(
-        width = 10,
-        topologyModePlotsUI("topologyModePlots")
+    ),
+    tabPanel(
+      title = "Paired mode",
+      value = "pairedModeTab",
+      sidebarLayout(
+        sidebarPanel(
+          width = 2,
+          pairedModeAnalysisUI("pairedModeAnalysis")
+        ),
+        mainPanel(
+          width = 10,
+          pairedModePlotsUI("pairedModePlots")
+        )
       )
-    )
-  ),
-  br(),
-  br()
+    ),
+    tabPanel(
+      title = "Topology mode",
+      value = "topologyModeTab",
+      sidebarLayout(
+        sidebarPanel(
+          width = 2,
+          topologyModeAnalysisUI("topologyModeAnalysis")
+        ),
+        mainPanel(
+          width = 10,
+          topologyModePlotsUI("topologyModePlots")
+        )
+      )
+    ),
+    br(),
+    br()
+  )
 )
 
 
