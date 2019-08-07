@@ -177,10 +177,10 @@ cleanInputs <- function(primaryGene = NULL,
       need((! length(genesetInputs) > 1), message = "Please select only one MSIGDB geneset.")
     )
     if (length(genesetInputs) == 1) {
-      geneSetInputType <- T
+      resList[['geneSetInputType']] <- T
       secondaryGenes <- genesetInputs
     } else {
-      geneSetInputType <- F
+      resList[['geneSetInputType']] <- F
       res <- symbolConverter(symbolVec = secondaryGenes, species = selectedSpecies)
       unresolvableGenes <- res$unresolvableGenes
       if (length(unresolvableGenes)) {
@@ -199,7 +199,7 @@ cleanInputs <- function(primaryGene = NULL,
             msg <- paste0("Input '", inputAlias, 
                           "' returned multiple official gene symbols: '",
                           paste0(mappedSymbols, collapse = "', '"), 
-                          "'. Only first will be used.")
+                          "'.")
             showNotification(id = "multi-mapped-gene-warning", ui = msg, session = session,
                              closeButton = T, type = "warning", duration = 60)
           }

@@ -11,7 +11,7 @@ singleGeneInputUI <- function(id) {
   ns <- NS(id)
   selectizeInput(inputId = ns("primaryGene"), label = "Gene name",
                  choices = NULL, 
-                 multiple = F, options = list(maxOptions = 10))
+                 multiple = F, options = list(maxOptions = 25))
 }
 
 singleGeneInput <- function(input, output, session, 
@@ -31,7 +31,7 @@ singleGeneInput <- function(input, output, session,
                            choices = mouseGeneOptions[order(mouseGeneOptions)],
                            server = TRUE, selected = "Brca1",
                            label = "Select gene",
-                           options = list(maxOptions = 10))
+                           options = list(maxOptions = 25))
       
     } else if (speciesSelected == "Human") {
       updateSelectizeInput(session = session,
@@ -39,7 +39,7 @@ singleGeneInput <- function(input, output, session,
                            label = "Select gene",
                            choices = humanGeneOptions[order(humanGeneOptions)],
                            server = TRUE, selected = "BRCA1",
-                           options = list(maxOptions = 10))
+                           options = list(maxOptions = 25))
     }
   })
   # Pass the value of 'primaryGene' backwards to the parent module
@@ -813,6 +813,13 @@ topologyModeAnalysis <- function(input, output, session,
                             session = session)
     # Return plots + correlation data
     progress$inc(.2, message = "Analyzing geneset topology ... ")
+    # Warn if using less than 10 genes for pathway enrichment
+    if (! cleanRes$geneSetInputType & 
+        length(cleanRes$secondaryGenes) < 10 & 
+        "pathwayEnrich" %in% crossComparisonType) {
+      msg <- "Pathway enrichment is recommended with at least 10 genes, otherwise results may not be informative."
+      showNotification(msg, type = "warning", duration = 60)
+    }
     data <- correlationAnalyzeR::analyzeGenesetTopology(genesOfInterest = cleanRes$secondaryGenes, 
                                                         alternativeTSNE = T, 
                                                         returnDataOnly = T, 
@@ -952,14 +959,14 @@ topologyModePlots <- function(input, output, session,
         "uiName" = "PCA Data"
       )
     }
-    # if ("inputGenes_pathwayEnrich_data" %in% names(data)) {
-    #   downloadsList[["pathwayEnrichmentData"]] <- list(
-    #     "conent" = as.data.frame(data$inputGenes_pathwayEnrich),
-    #     "file" = ".tsv",
-    #     "uiName" = "Pathway enrichment data"
-    #   )
-    # }
-    # 
+    if ("inputGenes_pathwayEnrich_data" %in% names(data)) {
+      downloadsList[["pathwayEnrichmentData"]] <- list(
+        "content" = as.data.frame(data$inputGenes_pathwayEnrich),
+        "file" = ".tsv",
+        "uiName" = "Pathway enrichment data"
+      )
+    }
+
     callModule(module = downloadData, id = "topologyModeDownloads", 
                primaryName = "topologyMode", downloadsListReact = downloadsList)
     ###########################################################
@@ -1087,7 +1094,7 @@ topologyModePlots <- function(input, output, session,
         mini <- min(plt_dat)
         maxi <- max(plt_dat)
         newVal <- max(c(abs(mini), maxi))
-        p <- heatmaply(plt_dat, hide_colorbar = TRUE,
+        p <- heatmaply(plt_dat, hide_colorbar = TRUE, 
                        limits = c(-1*newVal, newVal), 
                        colors = gplots::greenred(100), showticklabels = c(T, F))
         p
@@ -1186,6 +1193,9 @@ topologyModePlots <- function(input, output, session,
         eres <- data$inputGenes_pathwayEnrich_data
         eres <- eres[,c(2, 3, 5, 6, 8)]
         eres <- eres[order(eres[,2], decreasing = T),]
+        if (length(eres$Description) > 100) {
+          eres <- eres[c(1:100),]
+        }
         eres[,c(3,4)] <- apply(eres[,c(3,4)], 1:2, round, digits = 4)
         eresTitles <- eres$Description
         eresTitles <- gsub(eresTitles, pattern = "_", replacement = " ")
@@ -1193,7 +1203,7 @@ topologyModePlots <- function(input, output, session,
         eresTitles <- tools::toTitleCase(text = eresTitles)
         eresTitles[which(nchar(eresTitles) > 50)] <- paste0(substr(eresTitles[which(nchar(eresTitles) > 50)], 1, 37), "...")
         eres$Description <- createGSEAInfoLink(eres$Description, eresTitles)
-        datatable(eres, rownames = F, escape = F,
+        datatable(eres, rownames = F, escape = F, 
                   options = list(
                     pageLength = 8,
                     dom = "ftpr",

@@ -1,0 +1,26 @@
+{
+    "collab_server" : "",
+    "contents" : "",
+    "created" : 1565104460864.000,
+    "dirty" : false,
+    "encoding" : "UTF-8",
+    "folds" : "49|34|57|0|\n59|52|62|0|\n116|31|118|8|\n119|34|128|8|\n170|26|174|2|\n238|35|249|0|\n304|30|308|6|\n311|64|332|6|\n315|39|319|8|\n371|35|377|8|\n378|35|380|10|\n405|56|417|8|\n419|30|437|8|\n444|39|446|8|\n503|26|509|2|\n600|29|602|4|\n609|37|635|4|\n626|22|631|6|\n637|32|648|4|\n662|59|677|4|\n715|43|728|6|\n775|26|779|2|\n932|37|934|4|\n1182|46|1187|6|\n",
+    "hash" : "0",
+    "id" : "E55C9209",
+    "lastKnownWriteTime" : 1565191026,
+    "last_content_update" : 1565191026289,
+    "path" : "C:/Users/mille/Box Sync/Henry_Miller/Publications/Software/correlationAnalyzeR-ShinyApp/scripts/modules.R",
+    "project_path" : "scripts/modules.R",
+    "properties" : {
+        "cursorPosition" : "174,4",
+        "scrollLine" : "161",
+        "tempName" : "Untitled1"
+    },
+    "read_only" : false,
+    "read_only_alternatives" : [
+    ],
+    "relative_order" : 5,
+    "source_on_save" : false,
+    "source_window" : "",
+    "type" : "r_source"
+}
