@@ -40,59 +40,15 @@ ui <- tagList(
           text-align: center;
         }
         
+        #shiny-notification-panel {
+          width: 600px;
+          font-size: 120%;
+
+        }
         .shiny-notification {
-              height: 60px;
-              width: 400px;
-              position:fixed;
-              top: calc(50% - 30px);;
-              left: calc(50% - 200px);;
+              height: 80px;
+              
         }
-        
-        .shiny-notification-warning {
-          border-radius: 3px;
-          opacity: 0.85;
-          padding: 10px 8px 10px 10px;
-          margin: 2px;
-          color: #8a6d3b;
-          background-color: #fcf8e3;
-          border: 1px solid #faebcc;
-          height: 80px;
-          width: 400px;
-          position:fixed;
-          top: calc(50% + 350px);;
-          left: calc(50% + 400px);;
-        }
-        
-        .shiny-notification-error {
-          border-radius: 3px;
-          opacity: 0.85;
-          padding: 10px 8px 10px 10px;
-          margin: 2px;
-          color: #a94442;
-          background-color: #f2dede;
-          border: 1px solid #ebccd1;
-          height: 80px;
-          width: 400px;
-          position:fixed;
-          top: calc(50% + 250px);;
-          left: calc(50% + 400px);;
-        }
-        
-        .shiny-notification-message {
-          border-radius: 3px;
-          opacity: 0.85;
-          padding: 10px 8px 10px 10px;
-          margin: 2px;
-          color: #31708f;
-          background-color: #d9edf7;
-          border: 1px solid #bce8f1;
-          height: 80px;
-          width: 400px;
-          position:fixed;
-          top: calc(50% + 350px);;
-          left: calc(50% + 400px);;
-        }
-            
         "
         
       )
