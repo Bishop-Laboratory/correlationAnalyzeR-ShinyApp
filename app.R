@@ -4,6 +4,7 @@ library(shinyjs)
 # Helper functions for shiny apps
 require(RMySQL)
 require(DBI)
+library(shinyBS)
 
 source("scripts/modules.R")
 source("scripts/helpers.R")
@@ -20,16 +21,101 @@ GlobalData <- list("HS_basicGeneInfo" = HS_basicGeneInfo,
                    'mouseGeneOptions' = mouseGeneOptions)
 
 ui <- tagList(
-  tags$head(tags$link(rel="shortcut icon", href="/www/favicon.ico")),
+  tags$head(
+    tags$link(rel = "shortcut icon", href = "favicon.ico"),
+    tags$link(rel = "apple-touch-icon", sizes = "180x180", href = "favicon.ico"),
+    tags$link(rel = "icon", type = "image/png", sizes = "32x32", href = "/favicon-32x32.png"),
+    tags$link(rel = "icon", type = "image/png", sizes = "16x16", href = "/favicon-16x16.png"),
+    tags$style(
+      HTML(
+        "
+        #footerTag {
+          padding:10px; 
+          padding-top:10px; 
+          padding-bottom: 0px; 
+          background-color: #b64e01; 
+          color: #FFFFFF;
+          height:130px;
+          border-top: 1px solid #E7E7E7; 
+          text-align: center;
+        }
+        
+        .shiny-notification {
+              height: 60px;
+              width: 400px;
+              position:fixed;
+              top: calc(50% - 30px);;
+              left: calc(50% - 200px);;
+        }
+        
+        .shiny-notification-warning {
+          border-radius: 3px;
+          opacity: 0.85;
+          padding: 10px 8px 10px 10px;
+          margin: 2px;
+          color: #8a6d3b;
+          background-color: #fcf8e3;
+          border: 1px solid #faebcc;
+          height: 80px;
+          width: 400px;
+          position:fixed;
+          top: calc(50% + 350px);;
+          left: calc(50% + 400px);;
+        }
+        
+        .shiny-notification-error {
+          border-radius: 3px;
+          opacity: 0.85;
+          padding: 10px 8px 10px 10px;
+          margin: 2px;
+          color: #a94442;
+          background-color: #f2dede;
+          border: 1px solid #ebccd1;
+          height: 80px;
+          width: 400px;
+          position:fixed;
+          top: calc(50% + 250px);;
+          left: calc(50% + 400px);;
+        }
+        
+        .shiny-notification-message {
+          border-radius: 3px;
+          opacity: 0.85;
+          padding: 10px 8px 10px 10px;
+          margin: 2px;
+          color: #31708f;
+          background-color: #d9edf7;
+          border: 1px solid #bce8f1;
+          height: 80px;
+          width: 400px;
+          position:fixed;
+          top: calc(50% + 350px);;
+          left: calc(50% + 400px);;
+        }
+            
+        "
+        
+      )
+    )
+    ),
   navbarPage(
     theme = shinytheme("united"),
+    # theme = "mytheme.css",
     title = "Correlation AnalyzeR",
+    tabPanel(
+      title = "Home",
+      value = "homeTab",
+      fluidPage(
+        br(),
+        includeHTML("www/homepage.html")
+      )
+    ),
     tabPanel(
       title = "About",
       value = "aboutTab",
       fluidPage(
         br(),
-        includeHTML("www/homepage.html")
+        includeHTML("www/about.html")
       )
     ),
     tabPanel(
@@ -74,9 +160,18 @@ ui <- tagList(
         )
       )
     ),
+    tabPanel(
+      title = "Help",
+      value = "helpTab",
+      fluidPage(
+        br(),
+        includeHTML("www/FAQs.html")
+      )
+    ),
     br(),
     br()
   )
+  # tags$div(id="footerTag", p("footer"))
 )
 
 

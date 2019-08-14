@@ -164,7 +164,7 @@ cleanInputs <- function(primaryGene = NULL,
                       paste0(mappedSymbols, collapse = "', '"), 
                       "'. Only the first will be used, '", primaryGene, "'.")
         showNotification(id = "multi-mapped-gene-warning", ui = msg, session = session,
-                         closeButton = T, type = "warning", duration = 60)
+                         closeButton = T, type = "warning", duration = 8)
       }
       resList[["primaryGene"]] <- primaryGene
     }
@@ -183,12 +183,14 @@ cleanInputs <- function(primaryGene = NULL,
     } else {
       resList[['geneSetInputType']] <- F
       res <- symbolConverter(symbolVec = secondaryGenes, species = selectedSpecies)
+      secondaryGenes <- NULL
+      
       unresolvableGenes <- res$unresolvableGenes
       if (length(unresolvableGenes)) {
         msg <- paste0("Input list warning: '", paste0(unresolvableGenes, collapse = "', '"), 
                       "' not found. Skipping...")
         showNotification(id = "unresolvable-gene-warning", ui = msg, session = session,
-                         closeButton = T, type = "warning", duration = 60)
+                         closeButton = T, type = "warning", duration = 8)
       }
       if (length(res$resGenes)) {
         secondaryGenes <- res$resGenes
@@ -202,7 +204,7 @@ cleanInputs <- function(primaryGene = NULL,
                           paste0(mappedSymbols, collapse = "', '"), 
                           "'.")
             showNotification(id = "multi-mapped-gene-warning", ui = msg, session = session,
-                             closeButton = T, type = "warning", duration = 60)
+                             closeButton = T, type = "warning", duration = 8)
           }
         }
       }

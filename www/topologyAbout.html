@@ -1,8 +1,55 @@
-<div style="background-color: white; width: 960px; margin:0 auto; text-align: center; border: 1px solid #E3E3E3;">
+<div style="background-color: white; width: 960px; margin:0 auto; text-align: left; border: 1px;">
   <h1>Topology analysis explained</h1>
   <hr>
-  <p style="font-size: 14px;">
-    Topology analysis ... Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.
+  <p>High throughput experiments can generate a massive amount of unstructured data, making it challenging to uncover biologically meaningful results. For example, RNA sequencing analysis may yield 2000+ differentially expressed genes between two conditions but will not provide any information about how those genes relate to each other or known biological pathways. Without a computational method to parse this list, exploratory analysis of these data is inefficient and new hypotheses are not generated reliably.</p>
+  <p>
+    <em>Topology analysis</em> here refers to computational methods for parsing large gene lists. These analyses aim to answer two questions:
   </p>
+  <ol>
+    <li>"Are there any important gene groups within this list?"</li>
+    <li>"Is this particular list of genes biologically significant in some way?"</li>
+  </ol>
+  
+  <h2>Clustering identifies important groups within a gene list</h2>
+  <p>Every gene in a gene list has ~26k correlation values associated with it -- these represent the correlation of that gene with all other genes in the genome. Any two genes are likely to display some similarities in their correlation value distributions (e.g. both ATM and BRCA1 correlate highly with BRCA2), and also some differences (e.g. BRCA1 correlates with CCNB1 but ATM does not). In a gene list, gene groups can be identified as the members of the list who share correlations in common that are not shared with other members. In <em>Correlation AnalyzeR</em>, two approaches are used to find these groups: </p>
+  
+  <ol>
+    <li>Principal component analysis (Dimension reduction)</li>
+    <li>Hierarchical clustering (Variant genes)</li>
+  </ol>
+  
+  
+  <h3>Principal component analysis (Dimension reduction)</h3>
+  
+  <p>Principal component analysis (PCA) is a method which rapidly finds variation within a data set to derive <em>principal components</em> that explain the data in human-friendly way. In this context, PCA determines which gene correlations vary most between members of the input gene list. These highly variable genes are grouped into <em>principal components</em> based on how much variation they can account for. Finally, each list member is plotted along principal components 1 and 2 (the components which explain the most variation). The distance between list members on this graph is used to determine whether or not they belong to the same cluster through hierarchical clustering. <strong>NOTE:</strong> If 100+ genes are specified for analysis, TSNE will be used instead of PCA for visualizing the data groupings. While clusters are exaggerated somewhat by TSNE, this exaggeration creates meaningful groupings in larger data sets.</p>
+  
+  <h4>Example output from <em>Correlation AnalyzeR</em></h4>
+  <div class="col-sm-12">
+    <img src="exampleDimensionReduction.png" alt="PCA analysis in Correlation AnalyzeR">
+  </div>
+  <p>To learn more about PCA, check out <a href="https://www.datacamp.com/community/tutorials/pca-analysis-r" target="_blank">this article</a>.</p>
+  
+  <h3>Euclidean distance (Variant genes)</h3>
+  
+  <p>While PCA derives principal components to explain variation in the data set, the <em>Variant genes</em> method first finds the top variable genes and then uses them to calculate euclidean distance between samples (this <a href="https://davetang.org/muse/2013/08/15/distance-matrix-computation/" target="_blank">blog post</a> by Dave Tang walks through distance calculations in R). In <em>Correlation AnalyzeR</em>, the output of hierarchical clustering on this distance matrix is a heatmap showing the top 1000 most divisive (variant) genes and the resulting clusters which they reveal in the input gene list.</p>
+  
+  <h4>Example output from <em>Correlation AnalyzeR</em></h4>
+  <div class="col-sm-12">
+    <img src="exampleVariantGenes.png" alt="Hierarchical clustering in Correlation AnalyzeR" width = "100%">
+  </div>
+  <p>To learn more about hierarchical clustering, check out <a href="https://www.datacamp.com/community/tutorials/hierarchical-clustering-R" target="_blank">this article</a>.</p>
+  
+  <h2>Pathway analysis explains the functional significance of a gene list</h2>
+  
+  <p>Pathway analysis answers the question "is this list of genes biologically meaningful?" It does this by comparing the gene list to known genesets/pathways (e.g. "Hallmark Oxidative Phosphorylation") to determine if more genes from geneset are present in the gene list than would have occurred by random chance. The output of this analysis is a list of genesets ranked by the likelihood that they are enriched within the input gene list.</p>
+  
+  <h4>Example output from <em>Correlation AnalyzeR</em></h4>
+  <div class="col-sm-12">
+      <img src="examplePathEnrich.png" alt="Pathway enrichment in Correlation AnalyzeR" width = "100%">
+  </div>
+  <p><strong>NOTE:</strong> "GeneRatio" represents the proportion of input list genes which belong to a pathway.</p>
+  
+  <p>To learn more about pathway analysis, check out <a href="https://www.nature.com/articles/s41596-018-0103-9" target="_blank">this article</a>.</p>
+  
 </div>
 

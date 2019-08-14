@@ -1,0 +1,87 @@
+<div style="background-color: white; width: 960px; margin:0 auto; text-align: left; border: 1px;">
+  <h1>Biological insights from gene correlation data</h1>
+  <hr>
+  <div class="row">
+    <div class="col-sm-8 col-sm-offset-2">
+      <img src="correlationAnalyzeR_Hero.png" width="100%" style="padding-top: 3px;">
+    </div>
+  </div>
+  <hr>
+  <h2>Background</h2>
+  
+  <p>Recent initiatives have re-processed and standardized publicly available RNA-Sequencing data, providing the capability to simultaneously mine thousands of studies. Utilizing the <a href="https://amp.pharm.mssm.edu/archs4/" target="_blank">ARCHS4</a> data repository, this study obtained standardized gene counts from 180,000 sequencing samples, parsed them into tissue groups, and derived genome-wide co-expression correlations. <em>Correlation AnalyzeR</em> was built to allow users to analyze these correlations and extract the wealth of biological insight they can provide. Three analysis modes are available to users:</p> 
+  
+  <ol>
+    <li>Single mode</li>
+    <li>Paired mode</li>
+    <li>Topology mode</li>
+  </ol>
+  
+  <hr>
+  
+  <h2>Single mode</h2>
+  <br>
+  <h4>Use <em>single mode</em> to reveal the genome-wide co-expression correlation values for any gene of interest:</h4>
+  <div class="row">
+    <div class="col-sm-6">
+      <img src="exampleSingleModeHist.png" width="100%">
+    </div>
+    <div class="col-sm-6">
+      <img src="exampleSingleModeHistData.png" width="100%">
+    </div>
+  </div>
+  <br>
+  <h4>Uncover co-expressed pathways with Geneset Enrichment Analysis (GSEA):</h4>
+  <div class="row">
+    <div class="col-sm-12">
+      <img src="exampleSingleModeGSEA.png" width="100%">
+    </div>
+  </div>
+  <br>
+  <p>To learn more about GSEA, check out <a href="https://www.pnas.org/content/102/43/15545" target="_blank">this article</a>.</p>
+  <hr>
+  <h2>Paired mode</h2>
+  <br>
+  <h4>Use <em>paired mode</em> to reveal the location of secondary genes within a primary gene's correlation distribution:</h4>
+  <div class="row">
+    <div class="col-sm-12">
+      <img src="examplePairedModeCorrelations.png" width="100%">
+    </div>
+  </div>
+  <br>
+  <h4>Permutation testing determines whether secondary genes are significantly correlated compared to random chance:</h4>
+  <div class="row">
+    <div class="col-sm-8 col-sm-offset-2">
+      <img src="examplePairedModeSigTest.png" width="100%">
+    </div>
+  </div>
+  <br>
+  <p>Detail: A list of random genes identical in size to the secondary gene list is selected and a t test compares their correlation values against those of the secondary gene list. This is repeated with 2000 random permutations. The peak p value density represents the most likely <em>true</em> significance of the secondary gene list vs random.</p>
+  <hr>
+  
+  <h2>Topology mode</h2>
+  <br>
+  <h4>Use principal component analysis (PCA) to explore the subgroups within an input gene list (<em>Dimension reduction</em> method):</h4>
+  <div class="row">
+    <div class="col-sm-8 col-sm-offset-2">
+      <img src="exampleDimensionReduction.png" width="100%">
+    </div>
+  </div>
+  <br>
+  <h4>Explore clusters and variant genes with an interactive heatmap (<em>Variant genes</em> method):</h4>
+  <div class="row">
+    <div class="col-sm-12">
+      <img src="exampleVariantGenes.png" width="100%">
+    </div>
+  </div>
+  <br>
+  <h4>Enrich for pathways within a list of interesting genes (<em>Pathway enrichment</em> method):</h4>
+  <div class="row">
+    <div class="col-sm-12">
+      <img src="examplePathEnrich.png" width="100%">
+    </div>
+  </div>
+  <br>
+  <p>For more information, see <em>Topology analysis explained</em> in the <strong>Topology mode</strong> tab.</p>
+</div>
+
