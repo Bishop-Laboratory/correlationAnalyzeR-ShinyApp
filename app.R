@@ -5,7 +5,6 @@ library(shinyjs)
 require(RMySQL)
 require(DBI)
 library(shinyBS)
-
 source("scripts/modules.R")
 source("scripts/helpers.R")
 # # Load data for the global environment

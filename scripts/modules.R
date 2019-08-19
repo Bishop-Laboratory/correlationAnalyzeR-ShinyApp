@@ -613,13 +613,14 @@ pairedModeAnalysis <- function(input, output, session,
                             GlobalData = GlobalData,
                             session = session)
     pass <- 1
+    # print(cleanRes)
     if (is.null(cleanRes$secondaryGenes)) {
       print("FAIL")
       showNotification(ui = "No valid secondary genes provided.", 
                        duration = 8, type = 'error')
       pass <- 0
       progress$close()
-    } else if (sigTest & length(cleanRes$secondaryGenes) < 2) {
+    } else if (sigTest & length(unique(cleanRes$secondaryGenes)) < 2) {
       showNotification(ui = "Significance testing requires 2+ secondary genes", 
                        duration = 8, type = 'error')
       sigTest <- FALSE
