@@ -9,19 +9,20 @@
   <hr>
   <h2>Background</h2>
   
-  <p>Recent initiatives have re-processed and standardized publicly available RNA-Sequencing data, providing the capability to simultaneously mine thousands of studies. Utilizing the <a href="https://amp.pharm.mssm.edu/archs4/" target="_blank">ARCHS4</a> data repository, <em>Correlation AnalyzeR's</em> authors obtained standardized gene counts from 180,000 sequencing samples, parsed them into tissue groups, and derived genome-wide co-expression correlations. <em>Correlation AnalyzeR</em> was built to allow users to analyze these correlations and extract the wealth of biological insight they can provide. Three analysis modes are available to users:</p> 
+  <p>Recent initiatives have re-processed and standardized publicly available RNA-Sequencing data, opening the door to mass-scale re-analysis of gene expression studies. Utilizing the <a href="https://amp.pharm.mssm.edu/archs4/" target="_blank">ARCHS4</a> data repository, <em>Correlation AnalyzeR's</em> authors obtained standardized gene counts from over 200,000 sequencing samples, parsed them into tissue and disease groups, and derived genome-wide co-expression correlations. <em>Correlation AnalyzeR</em> was built to allow users to analyze these correlations and extract the wealth of biological insight they can provide. Four analysis modes are available to users:</p> 
   
   <ol>
-    <li>Single mode</li>
-    <li>Paired mode</li>
-    <li>Topology mode</li>
+    <li>Single gene</li>
+    <li>Gene vs gene</li>
+    <li>Gene vs gene list</li>
+    <li>Topology</li>
   </ol>
   
   <hr>
   
-  <h2>Single mode</h2>
+  <h2>Single gene</h2>
   <br>
-  <h4>Use <em>single mode</em> to reveal the genome-wide co-expression correlation values for any gene of interest:</h4>
+  <h4>Use <em>single gene mode</em> to reveal the genome-wide co-expression correlation values for any gene of interest in multiple tissues and disease conditions:</h4>
   <div class="row">
     <div class="col-sm-6">
       <img src="exampleSingleModeHist.png" width="100%">
@@ -31,7 +32,7 @@
     </div>
   </div>
   <br>
-  <h4>Uncover co-expressed pathways with Geneset Enrichment Analysis (GSEA):</h4>
+  <h4>Uncover co-expressed pathways with Correlation Geneset Enrichment Analysis (corGSEA):</h4>
   <div class="row">
     <div class="col-sm-12">
       <img src="exampleSingleModeGSEA.png" width="100%">
@@ -40,9 +41,29 @@
   <br>
   <p>To learn more about GSEA, check out <a href="https://www.pnas.org/content/102/43/15545" target="_blank">this article</a>.</p>
   <hr>
-  <h2>Paired mode</h2>
+  <h2>Gene vs gene</h2>
   <br>
-  <h4>Use <em>paired mode</em> to reveal the location of secondary genes within a primary gene's correlation distribution:</h4>
+  <h4>Use <em>Gene vs gene mode</em> to reveal tissue- and disease-specific differences in the co-expression correlations for two genes of interest:</h4>
+  <div class="row">
+    <div class="col-sm-6">
+      <img src="exampleGeneVsGeneModeScatter.png" width="100%">
+    </div>
+    <div class="col-sm-6">
+      <img src="exampleGeneVsGeneModeHeatmap_Genes.png" width="100%">
+    </div>
+  </div>
+  <br>
+  <h4>Uncover divergent pathway correlation between two genes of interest with corGSEA:</h4>
+  <div class="row">
+    <div class="col-sm-10 col-sm-offset-1">
+      <img src="exampleGeneVsGeneModeHeatmap_Pathways.png" width="100%">
+    </div>
+  </div>
+  <br>
+  <hr>
+  <h2>Gene vs gene list</h2>
+  <br>
+  <h4>Use <em>Gene vs gene list mode</em> to reveal the location of secondary genes within a primary gene's correlation distribution:</h4>
   <div class="row">
     <div class="col-sm-12">
       <img src="examplePairedModeCorrelations.png" width="100%">

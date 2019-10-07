@@ -11,17 +11,12 @@
   </ol>
   
   <h2>Clustering identifies important groups within a gene list</h2>
-  <p>Every gene in a gene list has ~26k correlation values associated with it -- these represent the correlation of that gene with all other genes in the genome. Any two genes are likely to display some similarities in their correlation value distributions (e.g. both ATM and BRCA1 correlate highly with BRCA2), and also some differences (e.g. BRCA1 correlates with CCNB1 but ATM does not). In a gene list, gene groups can be identified as the members of the list who share correlations in common that are not shared with other members. In <em>Correlation AnalyzeR</em>, two approaches are used to find these groups: </p>
+  <p>Every gene in a gene list has ~26k correlation values associated with it -- these represent the correlation of that gene with all other genes in the genome. Any two genes are likely to display some similarities in their correlation value distributions (e.g. both ATM and BRCA1 correlate highly with BRCA2), and also some differences (e.g. BRCA1 correlates with CCNB1 but ATM does not). In a gene list, gene groups can be identified as the members of the list who share correlations in common that are not shared with other members. In <em>Correlation AnalyzeR</em>, multiple approaches are used to find these groups (explained below). </p>
   
-  <ol>
-    <li>Principal component analysis (Dimension reduction)</li>
-    <li>Hierarchical clustering (Variant genes)</li>
-  </ol>
+
+  <h3>Dimensionality reduction plot (PCA)</h3>
   
-  
-  <h3>Principal component analysis (Dimension reduction)</h3>
-  
-  <p>Principal component analysis (PCA) is a method which rapidly finds variation within a data set to derive <em>principal components</em> that explain the data in human-friendly way. In this context, PCA determines which gene correlations vary most between members of the input gene list. These highly variable genes are grouped into <em>principal components</em> based on how much variation they can account for. Finally, each list member is plotted along principal components 1 and 2 (the components which explain the most variation). The distance between list members on this graph is used to determine whether or not they belong to the same cluster through hierarchical clustering. <strong>NOTE:</strong> If 100+ genes are specified for analysis, TSNE will be used instead of PCA for visualizing the data groupings. While clusters are exaggerated somewhat by TSNE, this exaggeration creates meaningful groupings in larger data sets.</p>
+  <p>Principal component analysis (PCA) is used here to derive <em>principal components</em> within the gene correlation matrix that explain this multidimensional dataset as a 2-dimensional scatter plot. Similar genes will be closer together in <em>PCA-space</em> and will considered as part of the same cluster. <strong>NOTE:</strong> If 100+ genes are specified for analysis, TSNE will be used instead of PCA for visualizing the data.</p>
   
   <h4>Example output from <em>Correlation AnalyzeR</em></h4>
   <div class="col-sm-12">
@@ -29,7 +24,7 @@
   </div>
   <p>To learn more about PCA, check out <a href="https://www.datacamp.com/community/tutorials/pca-analysis-r" target="_blank">this article</a>.</p>
   
-  <h3>Euclidean distance (Variant genes)</h3>
+  <h3>Variant genes (Interactive heatmap)</h3>
   
   <p>While PCA derives principal components to explain variation in the data set, the <em>Variant genes</em> method first finds the top variable genes and then uses them to calculate euclidean distance between samples (this <a href="https://davetang.org/muse/2013/08/15/distance-matrix-computation/" target="_blank">blog post</a> by Dave Tang walks through distance calculations in R). In <em>Correlation AnalyzeR</em>, the output of hierarchical clustering on this distance matrix is a heatmap showing the top 1000 most divisive (variant) genes and the resulting clusters which they reveal in the input gene list.</p>
   

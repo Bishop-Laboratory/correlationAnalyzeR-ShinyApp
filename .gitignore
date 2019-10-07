@@ -1,2 +1,4 @@
-.Rproj.user/
+.R*
 .Rhistory
+*.pper
+.Rproj.user/C97DFEEB/pcs/source-pane.pper

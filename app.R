@@ -10,14 +10,20 @@ source("scripts/helpers.R")
 # # Load data for the global environment
 load("data/geneInfo/HS_basicGeneInfo.RData")
 load("data/geneInfo/MM_basicGeneInfo.RData")
+load("data/humanTissueOptions.RData")
+load("data/mouseTissueOptions.RData")
 load("data/symbol_suggestions.RData")
 humanGeneOptions <- symbolsFinal$alias_symbol[which(symbolsFinal$species == "hsapiens")]
 mouseGeneOptions <- symbolsFinal$alias_symbol[which(symbolsFinal$species == "mmusculus")]
+
 # Create global data object
 GlobalData <- list("HS_basicGeneInfo" = HS_basicGeneInfo,
                    'MM_basicGeneInfo' = MM_basicGeneInfo,
                    'humanGeneOptions' = humanGeneOptions,
-                   'mouseGeneOptions' = mouseGeneOptions)
+                   'mouseGeneOptions' = mouseGeneOptions,
+                   'humanTissueOptions' = humanTissueOptions,
+                   'mouseTissueOptions' = mouseTissueOptions
+               )
 
 ui <- tagList(
   tags$head(
@@ -74,7 +80,7 @@ ui <- tagList(
       )
     ),
     tabPanel(
-      title = "Single mode",
+      title = "Single gene",
       value = "singleModeTab",
       sidebarLayout(
         sidebarPanel(
@@ -88,21 +94,35 @@ ui <- tagList(
       )
     ),
     tabPanel(
-      title = "Paired mode",
-      value = "pairedModeTab",
+      title = "Gene vs gene",
+      value = "geneVsGeneModeTab",
       sidebarLayout(
         sidebarPanel(
-          width = 2,
-          pairedModeAnalysisUI("pairedModeAnalysis")
+          width = 3,
+          geneVsGeneModeAnalysisUI("geneVsGeneModeAnalysis")
         ),
         mainPanel(
-          width = 10,
-          pairedModePlotsUI("pairedModePlots")
+          width = 9,
+          geneVsGeneModePlotsUI("geneVsGeneModePlots")
         )
       )
     ),
     tabPanel(
-      title = "Topology mode",
+      title = "Gene vs gene list",
+      value = "geneVsGeneListModeTab",
+      sidebarLayout(
+        sidebarPanel(
+          width = 2,
+          geneVsGeneListModeAnalysisUI("geneVsGeneListModeAnalysis")
+        ),
+        mainPanel(
+          width = 10,
+          geneVsGeneListModePlotsUI("geneVsGeneListModePlots")
+        )
+      )
+    ),
+    tabPanel(
+      title = "Gene list topology",
       value = "topologyModeTab",
       sidebarLayout(
         sidebarPanel(
@@ -134,7 +154,7 @@ server <- function(input, output, session) {
   
   
   dataList <- reactiveValues(singleModeData = NULL, 
-                             pairedModeData = NULL, 
+                             geneVsGeneListModeData = NULL, 
                              topologyModeData = NULL)
   observe({
     # Pull out all available analyses
@@ -142,8 +162,12 @@ server <- function(input, output, session) {
                                                id = "singleModeAnalysis", 
                                                parent_session = parent_session, 
                                                GlobalData = GlobalData)
-    dataList[["pairedModeData"]] <- callModule(module = pairedModeAnalysis, 
-                                               id = "pairedModeAnalysis", 
+    dataList[["geneVsGeneModeData"]] <- callModule(module = geneVsGeneModeAnalysis, 
+                                                   id = "geneVsGeneModeAnalysis", 
+                                                   parent_session = parent_session, 
+                                                   GlobalData = GlobalData)
+    dataList[["geneVsGeneListModeData"]] <- callModule(module = geneVsGeneListModeAnalysis, 
+                                               id = "geneVsGeneListModeAnalysis", 
                                                parent_session = parent_session, 
                                                GlobalData = GlobalData)
     dataList[["topologyModeData"]] <- callModule(module = topologyModeAnalysis, 
@@ -157,8 +181,13 @@ server <- function(input, output, session) {
                id = "singleModePlots",
                dataTables = dataList, 
                parent_session = session)
-    callModule(module = pairedModePlots,
-               id = "pairedModePlots",
+    callModule(module = geneVsGeneModePlots,
+               id = "geneVsGeneModePlots",
+               dataTables = dataList,
+               parent_session = session,
+               GlobalData = GlobalData)
+    callModule(module = geneVsGeneListModePlots,
+               id = "geneVsGeneListModePlots",
                dataTables = dataList,
                parent_session = session,
                GlobalData = GlobalData)

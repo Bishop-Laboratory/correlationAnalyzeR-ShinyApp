@@ -119,6 +119,7 @@ cleanInputs <- function(primaryGene = NULL,
                         secondaryGenes = NULL, 
                         selectedSpecies,
                         sampleType,
+                        tissueType,
                         GlobalData,
                         session) {
   # Get GlobalData inputs
@@ -132,15 +133,16 @@ cleanInputs <- function(primaryGene = NULL,
     selectedSpecies <- "mmusculus"
     basicGeneInfo <- MM_basicGeneInfo
   }
-  if (sampleType == "Normal") {
-    sampleType <- "Normal_Tissues"
+  if (sampleType == "normal") {
+    sampleType <- "normal"
   } else {
-    sampleType <- "Tumor_Tissues"
+    sampleType <- "cancer"
   }
   
   resList <- list()
   resList[["selectedSpecies"]] <- selectedSpecies
   resList[["sampleType"]] <- sampleType
+  resList[["tissueType"]] <- tissueType
   resList[["basicGeneInfo"]] <- basicGeneInfo
   
   
@@ -210,6 +212,7 @@ cleanInputs <- function(primaryGene = NULL,
       }
     }
     resList[["secondaryGenes"]] <- secondaryGenes
+    resList[["genesetInputs"]] <- genesetInputs
   }
   return(resList)
 }
