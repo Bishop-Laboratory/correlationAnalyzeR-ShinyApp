@@ -35,7 +35,7 @@ tissueTypeInput <- function(input, output, session,
       print("Mouse")
       mTisOpt <- names(mouseTissueOptions)[order(names(mouseTissueOptions))]
       mTisOpt <- gsub(mTisOpt, pattern = "0", replacement = " ")
-      mTisOpt <- tools::toTitleCase(mTisOpt)
+      mTisOpt <- stringr::str_to_title(mTisOpt)
       mTisOpt[which(mTisOpt == "all")] <- "All"
       updateSelectizeInput(session = session,
                            inputId = 'tissueType',
@@ -46,7 +46,7 @@ tissueTypeInput <- function(input, output, session,
       print("Human")
       hTisOpt <- names(humanTissueOptions)[order(names(humanTissueOptions))]
       hTisOpt <- gsub(hTisOpt, pattern = "0", replacement = " ")
-      hTisOpt <- tools::toTitleCase(hTisOpt)
+      hTisOpt <- stringr::str_to_title(hTisOpt)
       hTisOpt[which(hTisOpt == "all")] <- "All"
       updateSelectizeInput(session = session,
                            inputId = 'tissueType',
@@ -89,14 +89,14 @@ sampleTypeInput <- function(input, output, session,
       print("Mouse")
       updateSelectizeInput(session = session,
                            inputId = 'sampleType',
-                           choices = tools::toTitleCase(as.character(mouseTissueOptions[[tissueSelected]])),
+                           choices = stringr::str_to_title(as.character(mouseTissueOptions[[tissueSelected]])),
                            server = TRUE, selected = "Normal")
       
     } else if (speciesSelected == "Human") {
       print("Human")
       updateSelectizeInput(session = session,
                            inputId = 'sampleType',
-                           choices = tools::toTitleCase(as.character(humanTissueOptions[[tissueSelected]])),
+                           choices = stringr::str_to_title(as.character(humanTissueOptions[[tissueSelected]])),
                            server = TRUE, selected = "Normal")
     }
   })
@@ -280,7 +280,7 @@ singleModeAnalysisUI <- function(id) {
                    label = "GSEA P val Cutoff", max = 1, min = 0, step = .001),
       placement = "right", 
       title = 'Select GSEA P value cutoff', options=list(container="body"),
-      content = paste0('Select the maximum p value for GSEA results. Pathways ',
+      content = paste0('Select the maximum p value for corGSEA results. Pathways ',
                        'correlated with a p value above this level are not returned.')
     ),
     fluidRow(
@@ -417,12 +417,11 @@ singleModePlots <- function(input, output, session,
     observeEvent(eventExpr = (! is.null(dataList)), {
       
       progress <- dataList[['progress']]
-      progress$inc(.2, message = "Returning results ... ")
       tissueType <- gsub(tissueType, pattern = "0", replacement = " ")
       downloadsList <- reactiveValues()
       uiName <- paste0(primaryGene, " (",
-                       tissueType, " - ",
-                       sampleType, ")")
+                       stringr::str_to_title(tissueType), " - ",
+                       stringr::str_to_title(sampleType), ")")
       fileName <- paste0(primaryGene, "_",
                          tissueType, "_",
                          sampleType)
@@ -492,11 +491,14 @@ singleModePlots <- function(input, output, session,
       })
       
       if (gseaType != 'None') {
+        progress$inc(.1, message = "Calculating corGSEA ... ")
+        progress$inc(.1, detail = paste("This may take about ~1 minute to complete."))
+        
         output$gseaUI <- renderUI({
           ns <- session$ns
           tagList(
             hr(),
-            h3("GSEA results"),
+            h3("corGSEA results"),
             hr(),
             fluidRow(
               column(width = 6, 
@@ -528,6 +530,7 @@ singleModePlots <- function(input, output, session,
         names(ranks) <- correlationData[,1]
         set.seed(1) # Reproducible
         gseaData <- correlationAnalyzeR::myGSEA(ranks = ranks, 
+                                                nperm = 5000,
                                                 TERM2GENE = TERM2GENE, 
                                                 padjustedCutoff = pval,
                                                 returnDataOnly = T,
@@ -548,12 +551,13 @@ singleModePlots <- function(input, output, session,
                                             "uiName" = paste0(uiName, 
                                                               " GSEA data"))
         eres <- eres[,c(2, 5, 6, 7)]
+        eres <- eres[which(abs(eres[,2]) > 2),]
         eres <- eres[order(eres[,2], decreasing = T),]
-        eres[,c(2,3,4)] <- apply(eres[,c(2,3,4)], 1:2, round, digits = 4)
+        eres[,c(2,3,4)] <- apply(eres[,c(2,3,4)], 1:2, round, digits = 6)
+        eres <- eres[order(eres[,3], decreasing = F),]
+        
         eresTitles <- eres$Description
-        eresTitles <- gsub(eresTitles, pattern = "_", replacement = " ")
-        eresTitles <- tolower(eresTitles)
-        eresTitles <- tools::toTitleCase(text = eresTitles)
+        eresTitles <- correlationAnalyzeR::fixStrings(eresTitles)
         eresTitles[which(nchar(eresTitles) > 45)] <- paste0(substr(eresTitles[which(nchar(eresTitles) > 45)], 1, 41), "...")
         # Output gseaData
         output$gseaData <- renderDataTable(server = T, {
@@ -645,11 +649,11 @@ geneVsGeneModeAnalysisUI <- function(id) {
       radioButtons(inputId = ns("gseaType"), label = "GSEA type",
                    choices = c("Simple", "Complex")), 
       placement = "right", 
-      title = 'Select GSEA type', options=list(container="body"),
+      title = 'Select corGSEA type', options=list(container="body"),
       content = paste0('Use GSEA to discover pathways that correlate ',
                        'with your gene of interest. ',
                        'Choose "Simple" to rapidly enrich for common genesets',
-                       ' (MSIGDB genesets "H", "C1", "C2", "C5", and "C6").',
+                       ' (MSIGDB genesets "H", "C2:CP" and "C5:BP").',
                        ' Choose "Complex" to consider all MSIGDB genesets.')
     ),
     fluidRow(
@@ -712,7 +716,7 @@ geneVsGeneModeAnalysis <- function(input, output, session,
     species <- input$species
     gseaType <- input$gseaType
     pval <- input$pval
-    
+    print(geneOne)
     # Validate inputs
     shiny::validate(
       need(geneOne != "", "Please select Gene A")
@@ -721,17 +725,25 @@ geneVsGeneModeAnalysis <- function(input, output, session,
       need(geneTwo != "", "Please select Gene B")
     )
     
+    shiny::validate(
+      need(expr = {geneOne != geneTwo |
+             sampleTypeOne != sampleTypeTwo |
+             tissueTypeOne != tissueTypeTwo}, 
+          message = 
+            "Please select two different genes, tissue types, and/or disease states.")
+    )
+    
     # Initialize progress object
     progress <- shiny::Progress$new()
     progress$set(message = "Validating inputs ... ", value = .1)
     # on.exit(progress$close())
     
     # # Bug testing
-    # geneOne <- "ATM"
-    # tissueTypeOne <- "brain"
+    # geneOne <- "BRCA1"
+    # tissueTypeOne <- "all"
     # sampleTypeOne <- "normal"
-    # geneTwo <- "SLC3A2"
-    # tissueTypeTwo <- "brain"
+    # geneTwo <- "BRCA1"
+    # tissueTypeTwo <- "female0reproductive"
     # sampleTypeTwo <- "normal"
     # species <- "Human"
     # gseaType <- "Simple"
@@ -753,8 +765,9 @@ geneVsGeneModeAnalysis <- function(input, output, session,
     
     
     
-    progress$inc(.2, message = paste0("Gathering data for ", geneOne,
+    progress$inc(.1, message = paste0("Calculating corGSEA for ", geneOne,
                                       " and ", geneTwo, " ... "))
+    progress$inc(.1, detail = paste("This may take 1-2 minutes to complete."))
     
     genesOfInterest <- c(cleanResOne$primaryGene, cleanResTwo$primaryGene)
     Sample_Type <- c(cleanResOne$sampleType, cleanResTwo$sampleType)
@@ -769,12 +782,13 @@ geneVsGeneModeAnalysis <- function(input, output, session,
                                                        returnDataOnly = T,
                                                        topPlots = F, 
                                                        runGSEA = T)
-    data <- pairedRes$compared$correlations
-    data <- cbind(rownames(data), data)
+    dataOrig <- pairedRes$compared$correlations
+    data <- cbind(rownames(dataOrig), dataOrig)
     colnames(data)[1] <- "geneName"
     # data <- data[which(data[,1] != cleanRes$primaryGene),]
     rownames(data) <- NULL
     data <- merge(x = cleanResOne$basicGeneInfo, y = data, by = "geneName")
+    colnames(data)[c(4:7)] <- colnames(dataOrig)
     pairedRes[["processedCorrelationsFrame"]] <- data
     
     print("inside single mode do: ")
@@ -902,6 +916,7 @@ geneVsGeneModePlots <- function(input, output, session,
       corrValDF <- corrValDF[order(corrValDF$variance, decreasing = T),]
       corrValDF <- corrValDF[which(! corrValDF$geneName %in% colnames(corrValDF)),]
       rownames(corrValDF) <- NULL
+      colnames(corrValDF)[c(3:6)] <- colnames(correlations)[c(4:7)]
       corrValDF
     })
     
@@ -924,11 +939,9 @@ geneVsGeneModePlots <- function(input, output, session,
       cols <- colnames(corrValDF)
       cols[1] <- "Gene Name"
       cols[2] <- "Description"
-      cols <- gsub(x = cols, pattern = geneOne, 
-                   replacement = uiNameOne)
-      cols <- gsub(x = cols, pattern = geneTwo, 
-                   replacement = uiNameTwo)
-      cols[c(5:6)] <- tools::toTitleCase(cols[c(5:6)])
+      cols[3] <- uiNameOne
+      cols[4] <- uiNameTwo
+      cols[c(5:6)] <- stringr::str_to_title(cols[c(5:6)])
       
       
       
@@ -956,10 +969,8 @@ geneVsGeneModePlots <- function(input, output, session,
         h3("Compared correlations"),
         hr(),
         fluidRow(
-          
           column(width = 6, #title = "Correlation Histogram",
                  plotOutput(ns("corrScatter"))
-                 
           ),
           column(width = 6, #title = "Correlation Histogram",
                  plotOutput(ns("heatGenes"))
@@ -987,18 +998,14 @@ geneVsGeneModePlots <- function(input, output, session,
       cols[1] <- "Pathway"
       cols <- gsub(x = cols, pattern = "_", replacement = " ")
       cols <- gsub(x = cols, pattern = "NES ", replacement = "")
-      cols <- gsub(x = cols, pattern = geneOne, 
-                   replacement = uiNameOne)
-      cols <- gsub(x = cols, pattern = geneTwo, 
-                   replacement = uiNameTwo)
-      cols[c(4:5)] <- tools::toTitleCase(cols[c(4:5)])
+      cols[2] <- uiNameOne
+      cols[3] <- uiNameTwo
+      cols[c(4:5)] <- stringr::str_to_title(cols[c(4:5)])
       
       eres <- eres[order(eres[,5], decreasing = T),]
       eres[,c(2:5)] <- apply(eres[,c(2:5)], 1:2, round, digits = 3)
       eresTitles <- eres[,1]
-      eresTitles <- gsub(eresTitles, pattern = "_", replacement = " ")
-      eresTitles <- tolower(eresTitles)
-      eresTitles <- tools::toTitleCase(text = eresTitles)
+      
       eresTitles[which(nchar(eresTitles) > 45)] <- paste0(substr(eresTitles[which(nchar(eresTitles) > 45)],
                                                                  1, 41), "...")
       # Replace gene name with HTML to call gene info modal
@@ -1022,7 +1029,7 @@ geneVsGeneModePlots <- function(input, output, session,
       ns <- session$ns
       tagList(
         hr(),
-        h3("Compared GSEA results"),
+        h3("Compared corGSEA results"),
         hr(),
         fluidRow(
           
@@ -2029,15 +2036,13 @@ topologyModePlots <- function(input, output, session,
         pathwayEnrichDT <- reactive({
           eres <- data$inputGenes_pathwayEnrich_data
           eres <- eres[,c(2, 3, 5, 6, 8)]
-          eres <- eres[order(eres[,2], decreasing = T),]
+          eres <- eres[order(eres[,3], decreasing = F),]
           if (length(eres$Description) > 100) {
             eres <- eres[c(1:100),]
           }
           eres[,c(3,4)] <- apply(eres[,c(3,4)], 1:2, round, digits = 4)
           eresTitles <- eres$Description
-          eresTitles <- gsub(eresTitles, pattern = "_", replacement = " ")
-          eresTitles <- tolower(eresTitles)
-          eresTitles <- tools::toTitleCase(text = eresTitles)
+          eresTitles <- correlationAnalyzeR::fixStrings(eresTitles)
           eresTitles[which(nchar(eresTitles) > 60)] <- paste0(substr(eresTitles[which(nchar(eresTitles) > 60)], 1, 57), "...")
           eres$Description <- createGSEAInfoLink(eres$Description, eresTitles)
           eres

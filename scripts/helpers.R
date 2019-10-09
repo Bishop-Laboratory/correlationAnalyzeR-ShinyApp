@@ -110,6 +110,10 @@ createGeneGuide <- function() {
   
   symbolsFinal <- rbind(humanSymbolsFinal, mouseSymbolsFinal)
   symbolsFinal <- symbolsFinal[,c(1, 4)]
+  # Remove '('-containing gene aliases
+  symbolsFinal <- symbolsFinal[grep(symbolsFinal$alias_symbol, 
+                                    pattern = "\\(", 
+                                    invert = T),]
   save(symbolsFinal, file = "data/symbol_suggestions.RData")
   
 }

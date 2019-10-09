@@ -4,6 +4,11 @@
   <br>
   <h2>FAQs</h2>
   <hr>
+  <h3>How can I download the R-package for Correlation AnalyzeR?</h3>
+  <p>The R package for <em>correlationAnalyzeR</em> is available for download from github <a href="https://github.com/millerh1/correlationAnalyzeR-ShinyApp/issues" target="_blank"> <span class="glyphicon glyphicon-share-alt" aria-hidden="true"></span> <img src="GitHub-Mark.png" height="20"></a></p>
+  <code>## install.packages("devtools")<br>devtools::install_github("millerh1/correlationAnalyzeR")</code>
+  <br>
+  <br>
   <h3>How were sample metadata parsed to generate tissue- and disease-specific expression data?</h3>
   <p>Sample metadata was parsed using a tissue-specific regular expressions dictionary manually curated and validated for sanity against a randomized list of sample tissue metadata entries. This dictionary was supplemented by the <a href="https://www.ebi.ac.uk/ols/ontologies/bto" target="_blank">BRENDA Tissue Ontology</a> to provide robust sample categorization. The curated dictionary, accompanying pre-processing scripts, and final sample group assignments (as .RData objects) can be downloaded from the <a href="https://github.com/millerh1/correlationAnalyzeR" target="_blank"><em>Correlation AnalyzeR</em> github repository</a>.</p>
   <br>
@@ -17,11 +22,12 @@
   <p>Paired-mode involves a user choosing one primary gene and a list of secondary genes to determine if the secondary gene list is correlated with the primary gene. The correlation of these genes is compared to random chance by using a permutation approach. In simple terms, the analysis asks "is the degree of correlation for the selected gene list greater than if someone were to randomly select the same number of genes?"<br>For each permutation, a list of random genes with the same length as the secondary gene list is chosen. Then, a two-sided t test is performed to determine whether the absolute correlation values of the randomly-chosen genes are significantly different from those of the secondary gene list. By performing 2000 permutations, a distribution of t test p values is generated. If this distribution forms a peak below p=0.05, then it is determined that the secondary gene list is significantly correlated with the primary gene compared to random chance. Absolute correlations were used so that strong correlations would be treated equally regardless of sign.</p>
   <br>
   <hr>
-  <h2>Additional information</h2>
+  <h2>Contact information</h2>
   <p>For website support and additional assistance please contact <a href="mailto:millerh1@livemail.uthscsa.edu">Henry Miller</a></p>
   <p>For bug reports please open an issue and someone will address it shortly<a href="https://github.com/millerh1/correlationAnalyzeR-ShinyApp/issues" target="_blank"> <span class="glyphicon glyphicon-share-alt" aria-hidden="true"></span> <img src="GitHub-Mark.png" height="20"></a></p>
   <br>
-  <h4>The <em>correlationAnalyzeR</em> R package is available for download:</h4>
-  <code>## install.packages("devtools")<br>devtools::install_github("millerh1/correlationAnalyzeR")</code>
+  <p>Visit our <a href="https://gccri.uthscsa.edu/lab/bishop/" target="_blank">webpage</a> to more about the Bishop Laboratory, part of the Greehey Children's Cancer Research Institute</p>
+  <br>
+
 </div>
 

@@ -142,10 +142,10 @@ ui <- tagList(
         br(),
         includeHTML("www/FAQs.html")
       )
-    ),
-    br(),
-    br()
-  )
+    )
+  ),
+  br(),
+  br()
   # tags$div(id="footerTag", p("footer"))
 )
 
