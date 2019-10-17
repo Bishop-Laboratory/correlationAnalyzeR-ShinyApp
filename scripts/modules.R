@@ -4,6 +4,7 @@ library(heatmaply)
 library(DT)
 library(shinyBS)
 source("scripts/helpers.R")
+library(shinyWidgets)
 
 ## Generic helper modules ##
 # Input types
@@ -23,7 +24,8 @@ tissueTypeInputUI <- function(id) {
 tissueTypeInput <- function(input, output, session, 
                             parent_session,
                             GlobalData, 
-                            species) {
+                            species, 
+                            crossComparisonMode = FALSE) {
   # Get data objects
   mouseTissueOptions <- GlobalData$mouseTissueOptions
   humanTissueOptions <- GlobalData$humanTissueOptions
@@ -31,8 +33,15 @@ tissueTypeInput <- function(input, output, session,
   # If the selected species changes to mouse, update the selectize options
   observe({
     speciesSelected <- species()
+    crossComparisonMode <- crossComparisonMode
+    if (crossComparisonMode) {
+      updateSelectizeInput(session = session,
+                           inputId = 'tissueType',
+                           choices = c("-"),
+                           server = TRUE, selected = "-")
+      return("-")
+    }
     if (speciesSelected == "Mouse") {
-      print("Mouse")
       mTisOpt <- names(mouseTissueOptions)[order(names(mouseTissueOptions))]
       mTisOpt <- gsub(mTisOpt, pattern = "0", replacement = " ")
       mTisOpt <- stringr::str_to_title(mTisOpt)
@@ -43,7 +52,6 @@ tissueTypeInput <- function(input, output, session,
                            server = TRUE, selected = "All")
       
     } else if (speciesSelected == "Human") {
-      print("Human")
       hTisOpt <- names(humanTissueOptions)[order(names(humanTissueOptions))]
       hTisOpt <- gsub(hTisOpt, pattern = "0", replacement = " ")
       hTisOpt <- stringr::str_to_title(hTisOpt)
@@ -83,17 +91,22 @@ sampleTypeInput <- function(input, output, session,
   observe({
     speciesSelected <- species()
     tissueSelected <- tissueType()
+    if (tissueSelected == "-") {
+      updateSelectizeInput(session = session,
+                           inputId = 'sampleType',
+                           choices = "-",
+                           server = TRUE, selected = "-")
+      return("-")
+    }
     tissueSelected <- tolower(tissueSelected)
     tissueSelected <- gsub(tissueSelected, pattern = " ", replacement = "0")
     if (speciesSelected == "Mouse") {
-      print("Mouse")
       updateSelectizeInput(session = session,
                            inputId = 'sampleType',
                            choices = stringr::str_to_title(as.character(mouseTissueOptions[[tissueSelected]])),
                            server = TRUE, selected = "Normal")
       
     } else if (speciesSelected == "Human") {
-      print("Human")
       updateSelectizeInput(session = session,
                            inputId = 'sampleType',
                            choices = stringr::str_to_title(as.character(humanTissueOptions[[tissueSelected]])),
@@ -115,7 +128,7 @@ singleGeneInputUI <- function(id, label) {
                    multiple = F, options = list(maxOptions = 100)),
     placement = "right", 
     title = paste0(label, " input"), options=list(container="body"),
-    content = paste0("Enter a primary gene of interest. ",
+    content = paste0("Enter a gene of interest. ",
                      "Valid gene names will be displayed below as ",
                      "you type.")
   )
@@ -136,7 +149,6 @@ singleGeneInput <- function(input, output, session,
   observe({
     speciesSelected <- species()
     if (speciesSelected == "Mouse") {
-      print("Mouse gene")
       updateSelectizeInput(session = session,
                            inputId = 'primaryGene',
                            choices = mouseGeneOptions[order(mouseGeneOptions)],
@@ -144,7 +156,6 @@ singleGeneInput <- function(input, output, session,
                            options = list(maxOptions = 100))
       
     } else if (speciesSelected == "Human") {
-      print("Human gene")
       updateSelectizeInput(session = session,
                            inputId = 'primaryGene',
                            choices = humanGeneOptions[order(humanGeneOptions)],
@@ -188,10 +199,8 @@ downloadData <- function(input, output, session,
   
   output$downloadBox <- renderUI({
     ns <- session$ns
-    print(names(downloadsList))
     downloadBoxUI <- tagList()
     downloadBoxUI <- lapply(1:length(names(downloadsList)), function(i) {
-      print(i)
       downloadBoxUI <- tagList(
         downloadBoxUI,
         fluidRow(
@@ -223,10 +232,7 @@ downloadData <- function(input, output, session,
   
   # Put handlers here
   observe({
-    print(names(downloadsList))
     lapply(1:length(names(downloadsList)), function(i) {
-      print(paste0("download", names(downloadsList)[i]))
-      print(paste0(primaryName, "_", names(downloadsList)[i], downloadsList[[i]]$file))
       output[[paste0("download", i)]] <- downloadHandler(
         filename = function() {
           paste0(primaryName, "_", names(downloadsList)[i], downloadsList[[i]]$file)
@@ -264,25 +270,37 @@ singleModeAnalysisUI <- function(id) {
     tissueTypeInputUI(ns("tissueTypeInput")),
     sampleTypeInputUI(ns("sampleTypeInput")),
     popify(
-      radioButtons(inputId = ns("gseaType"), label = "GSEA type",
+      radioButtons(inputId = ns("gseaType"), label = "corGSEA type",
                    choices = c("Simple", "Complex", "None")),
       placement = "right", 
-      title = 'Select GSEA type', options=list(container="body"),
-      content = paste0('Use GSEA to discover pathways that correlate ',
+      title = 'Select corGSEA type', options=list(container="body"),
+      content = paste0('Use corGSEA to discover pathways that correlate ',
                        'with your gene of interest. ',
                        'Choose "Simple" to rapidly enrich for common genesets',
                        ' (MSIGDB genesets "H", "C1", "C2", "C5", and "C6").',
                        ' Choose "Complex" to consider all MSIGDB genesets, or choose "None" ',
-                       'to skip GSEA entirely.')
+                       'to skip corGSEA entirely.')
+    ), 
+    popify(title = "Cross comparison mode", 
+           placement = "right", options=list(container="body"),
+      switchInput(ns("crossComparisonMode"), value = FALSE, label = "Group mode"),
+      content = paste0('Cross comparison mode is a new analysis style for ',
+                       'viewing correlations for a gene across tissue/disease groups.',
+                       ' Select whether to examine differences across "Normal", "Cancer", ',
+                       'or "All" tissue groups. Only "Normal" is available for mouse due to ',
+                       'concerns regarding sample number for mouse cancer conditions.')
     ),
-    popify(
-      numericInput(inputId = ns("pval"), value = .05,
-                   label = "GSEA P val Cutoff", max = 1, min = 0, step = .001),
-      placement = "right", 
-      title = 'Select GSEA P value cutoff', options=list(container="body"),
-      content = paste0('Select the maximum p value for corGSEA results. Pathways ',
-                       'correlated with a p value above this level are not returned.')
-    ),
+    conditionalPanel(condition = "input.crossComparisonMode && input.species == 'Human'", 
+                     ns = ns,
+                     radioButtons(inputId = ns("crossComparisonModeTypeHuman"), 
+                                  label = "Group mode type", selected = "All",
+                                  choices = c("All", "Normal", "Cancer"))),
+    conditionalPanel(condition = "input.crossComparisonMode && input.species == 'Mouse'", 
+                     ns = ns,
+                     radioButtons(inputId = ns("crossComparisonModeTypeMouse"), 
+                                  label = "Group mode type",  
+                                  selected = "Normal",
+                                  choices = c("Normal"))),
     fluidRow(
       column(4, actionButton(ns("do"), "Analyze"))
     )
@@ -293,12 +311,10 @@ singleModeAnalysis <- function(input, output, session,
                                parent_session, GlobalData) {
   
   species <- reactive({input$species})
-  # tissueType <- reactive({input$tissueType})
+  observe({
+    crossComparisonMode <- input$crossComparisonMode
+  })
   do <- reactive({input$do})
-  # do <- reactive({input$do})
-  print(species)
-  print(do)
-  # print(do)
   primaryGene <- callModule(singleGeneInput, "singleGeneInput",
                             parent_session = parent_session,
                             GlobalData = GlobalData,
@@ -306,13 +322,39 @@ singleModeAnalysis <- function(input, output, session,
   tissueType <- callModule(tissueTypeInput, "tissueTypeInput",
                            parent_session = parent_session,
                            GlobalData = GlobalData,
-                           species = species)
+                           species = species,
+                           crossComparisonMode = input$crossComparisonMode)
   sampleType <- callModule(sampleTypeInput, "sampleTypeInput",
                            parent_session = parent_session,
                            GlobalData = GlobalData,
                            species = species, 
                            tissueType = tissueType)
 
+  observe({
+    crossComparisonMode <- input$crossComparisonMode
+    speciesSelected <- input$species
+    if (crossComparisonMode) {
+      updateRadioButtons(
+        inputId = "gseaType", session = session, 
+        choices = c("None"), selected = "None"
+      )
+    } else {
+      updateRadioButtons(inputId = "gseaType", label = "corGSEA type",
+                         choices = c("Simple", "Complex", "None"),
+                         selected = "Simple", session = session)
+    }
+    tissueType <- callModule(tissueTypeInput, "tissueTypeInput",
+                             parent_session = parent_session,
+                             GlobalData = GlobalData,
+                             species = species,
+                             crossComparisonMode = input$crossComparisonMode)
+    sampleType <- callModule(sampleTypeInput, "sampleTypeInput",
+                             parent_session = parent_session,
+                             GlobalData = GlobalData,
+                             species = species, 
+                             tissueType = tissueType)
+  })
+  
   data <- reactiveVal()
   
   # Observe the value of 'do' and run the analysis if it's above 1
@@ -353,31 +395,75 @@ singleModeAnalysis <- function(input, output, session,
                             GlobalData = GlobalData,
                             session = session)
     
-    progress$inc(.2, message = paste0("Gathering correlations for ", 
-                                      primaryGene, " ... "))
     
-    data <- correlationAnalyzeR::getCorrelationData(Species = cleanRes$selectedSpecies,
-                                                    Sample_Type = cleanRes$sampleType,
-                                                    Tissue = cleanRes$tissueType,
-                                                    geneList = cleanRes$primaryGene)
-    data <- cbind(rownames(data), data)
-    colnames(data)[1] <- "geneName"
-    data <- data[which(data[,1] != cleanRes$primaryGene),]
-    rownames(data) <- NULL
-    data <- merge(x = cleanRes$basicGeneInfo, y = data, by = "geneName")
-    # Enable the download button
+    if (input$crossComparisonMode) {
+      progress$inc(.2, message = paste0("Starting cross comparisons for ", 
+                                        primaryGene, " ... "))
+      if (input$species == "Human") {
+        whichCompareGroups <- input$crossComparisonModeTypeHuman
+        print("Human cross")
+      } else {
+        whichCompareGroups <- input$crossComparisonModeTypeMouse
+        print("mouse cross")
+      }
+      print("which compare")
+      print(whichCompareGroups)
+      
+      resList <- correlationAnalyzeR::analyzeSingleGenes(
+        Species = cleanRes$selectedSpecies,
+        runGSEA = F, crossCompareMode = T,
+        returnDataOnly = T, 
+        whichCompareGroups = tolower(whichCompareGroups),
+        Sample_Type = cleanRes$sampleType,
+        Tissue = cleanRes$tissueType,
+        genesOfInterest = cleanRes$primaryGene
+      )
+      data <- resList[[1]][["correlations"]]
+      data$Variance <- matrixStats::rowVars(as.matrix(data))
+      data <- cbind(rownames(data), data)
+      colnames(data)[1] <- "geneName"
+      data <- data[which(data[,1] != cleanRes$primaryGene),]
+      rownames(data) <- NULL
+      data <- merge(x = cleanRes$basicGeneInfo, y = data, by = "geneName")
+      data <- data[order(data$Variance, decreasing = T),]
+      resList[[1]][["correlations"]] <- data
+      res <- list("correlationData" = resList,
+                  "species" = species,
+                  "gseaType" = gseaType,
+                  "pval" = pval,
+                  "primaryGene" = primaryGene,
+                  "sampleType" = sampleType,
+                  "tissueType" = tissueType,
+                  "progress" = progress,
+                  "whichCompareGroups" = whichCompareGroups)
+      res
+      
+    } else {
+      progress$inc(.2, message = paste0("Gathering correlations for ", 
+                                        primaryGene, " ... "))
+      
+      data <- correlationAnalyzeR::getCorrelationData(Species = cleanRes$selectedSpecies,
+                                                      Sample_Type = cleanRes$sampleType,
+                                                      Tissue = cleanRes$tissueType,
+                                                      geneList = cleanRes$primaryGene)
+      data <- cbind(rownames(data), data)
+      colnames(data)[1] <- "geneName"
+      data <- data[which(data[,1] != cleanRes$primaryGene),]
+      rownames(data) <- NULL
+      data <- merge(x = cleanRes$basicGeneInfo, y = data, by = "geneName")
+      # Enable the download button
+      res <- list("correlationData" = data,
+                  "species" = species,
+                  "gseaType" = gseaType,
+                  "pval" = pval,
+                  "primaryGene" = primaryGene,
+                  "sampleType" = sampleType,
+                  "tissueType" = tissueType,
+                  "progress" = progress)
+      res
+    }
     
-    print("inside single mode do: ")
-    print(input$do)
-    res <- list("correlationData" = data,
-                "species" = species,
-                "gseaType" = gseaType,
-                "pval" = pval,
-                "primaryGene" = primaryGene,
-                "sampleType" = sampleType,
-                "tissueType" = tissueType,
-                "progress" = progress)
-    res
+    
   })
   
   return(data)
@@ -417,203 +503,307 @@ singleModePlots <- function(input, output, session,
     observeEvent(eventExpr = (! is.null(dataList)), {
       
       progress <- dataList[['progress']]
-      tissueType <- gsub(tissueType, pattern = "0", replacement = " ")
-      downloadsList <- reactiveValues()
-      uiName <- paste0(primaryGene, " (",
-                       stringr::str_to_title(tissueType), " - ",
-                       stringr::str_to_title(sampleType), ")")
-      fileName <- paste0(primaryGene, "_",
-                         tissueType, "_",
-                         sampleType)
-      correlationData <- correlationData[order(correlationData[,4], decreasing = T),]
-      downloadsList[["correlationData"]] <- list("content" = correlationData,
-                                                 "uiName" = paste0(uiName,
-                                                                   " correlation data"),
-                                                 "file" = ".tsv")
-      
-      output$geneHist <- renderPlotly({
-        colnames(correlationData)[4] <- "vals"
-        p <- ggpubr::gghistogram(data = correlationData, x = "vals", y = "..count..",
-                                 bins = 100, ylab = "Frequency\n",
-                                 title = uiName, 
-                                 xlab = paste0(primaryGene, " correlation values")) +
-          ggplot2::expand_limits(x = 0, y = 0)
+      if ("whichCompareGroups" %in% names(dataList)) {
+        whichCompareGroups <- dataList[["whichCompareGroups"]]
+        resList <- dataList[["correlationData"]][[1]]
+        downloadsList <- reactiveValues()
+        correlations <- resList[["correlations"]]
         
-        p <- plotly::ggplotly(p, source = "singleSelect") %>%
-          # plotly::layout(dragmode = "select") %>%
-          config(plot_ly(),
-                 toImageButtonOptions= list(filename = paste0(fileName,
-                                                              "_correlationHistogram.png")))
-        s <- input$correlationData_rows_selected
-        if (length(s)) {
-          d2 <- correlationData[,c(1,3,4)]
-          d2 <- unique(d2)
-          colnames(d2)[3] <- "vals"
-          # correlationData$vals[s]
+        uiName <- paste0(primaryGene," ", tolower(whichCompareGroups),
+                         " groups")
+        fileName <- paste0(primaryGene, "_",
+                           tolower(whichCompareGroups), "_",
+                           "groupMode")
+        downloadsList[["correlationData"]] <- list("content" = correlations,
+                                                   "uiName" = paste0(uiName,
+                                                                     " correlation data"),
+                                                   "file" = ".tsv")
+        heatMapDat <- resList[["heatmapBigData"]]
+        heatMapSmall <- resList[["heatmapSmall"]]
+        geneTPMBoxplot <- resList[["TPM_boxPlot"]]
+        geneTPMBoxplotData <- resList[["TPM_DF"]]
+        downloadsList[["TPM"]] <- list("content" = geneTPMBoxplotData,
+                                       "uiName" = paste0(uiName,
+                                                         " normalized expression (TPM)"),
+                                       "file" = ".tsv")
+        output$heatMap <- renderPlotly({
+          progress$inc(.3, message = "Rendering interactive heatmap ... ")
+          
+          plt_dat <- heatMapDat
+          # Center the scale
+          n <- length(colnames(plt_dat))# Get number of samples
+          width <- n*50
+          if (width < 800) {
+            width <- 800
+          } else if (width > 6000) {
+            width <- 6000
+          }
+          newNames <- colnames(plt_dat)
+          if (whichCompareGroups != "All") {
+            newNames <- strsplit(newNames, split = "_")
+            newNames <- sapply(newNames, "[[", 2)
+            newNames <- gsub(newNames, pattern = "0", replacement = " ")
+            newNames <- stringr::str_to_title(newNames)
+          } else {
+            newNames <- strsplit(newNames, split = "_")
+            newNames1 <- sapply(newNames, "[[", 2)
+            newNames1 <- gsub(newNames1, pattern = "0", replacement = " ")
+            newNames1 <- stringr::str_to_title(newNames1)
+            newNames2 <- sapply(newNames, "[[", 3)
+            newNames2 <- stringr::str_to_title(newNames2)
+            newNames <- paste0(newNames1, " - ", newNames2)
+          }
+          plt_dat <- plt_dat[c(1:500),]
+          mini <- min(plt_dat)
+          maxi <- max(plt_dat)
+          newVal <- max(c(abs(mini), maxi))
+          
+          p <- heatmaply(plt_dat, hide_colorbar = TRUE, 
+                         limits = c(-1*newVal, newVal), 
+                         colors =  colorRampPalette(rev(RColorBrewer::brewer.pal(n = 7, name =
+                                                                     "RdYlBu")))(100),
+                         labCol = newNames,
+                         showticklabels = c(T, F)) %>% layout(height=500)
           p <- p %>%
-            plotly::add_segments(x = d2$vals[s], xend = d2$vals[s], y = 0,
-                                 yend = 3000, color = "FF0404")
-        } 
-        p
-      })
-      
-      # Make correlations datatable
-      output$correlationData <- DT::renderDataTable(server = T,{
-        correlationData$geneName <- createGeneInfoLink(correlationData$geneName)
-        d2 <- correlationData
-        d2 <- d2[,c(1,3,4)]
-        d2 <- unique(d2)
-        datatable(d2, selection = "single", rownames = F, escape = F,
-                  options = list(
-                    pageLength = 6,
-                    dom = "ftprl",
-                    scrollX = TRUE
-                  ),
-                  colnames = c("Gene Name", 
-                               "Description", "Correlation Value"))
-      }, escape = FALSE)
-      
-      output$correlationsUI <- renderUI({
-        ns <- session$ns
-        tagList(
-          hr(),
-          h3("Correlation data"),
-          hr(),
-          fluidRow(
-            column(width = 6, #title = "Correlation Histogram",
-                   plotlyOutput(ns("geneHist"))
-            ),
-            column(width =  6, #title = "Correlation Data",
-                   DT::dataTableOutput(ns("correlationData"))
+            config(plot_ly(),
+                   toImageButtonOptions = list(
+                     filename = paste0(fileName, "_heatMap.png"),
+                     format = "png",
+                     width = width,
+                     height = 500))
+          p
+        })
+        output$heatMapSmall <- renderPlot(height = 500, {
+          heatMapSmall
+        })
+        output$geneTPMBoxplot <- renderPlot(height = 500, {
+          geneTPMBoxplot
+        })
+        
+        output$correlationsUI <- renderUI({
+          ns <- session$ns
+          tagList(
+            hr(),
+            h3("Group mode correlation heatmap"),
+            hr(),
+            fluidRow( style = "height:500px;",
+              column(width = 12, #title = "Correlation Histogram",
+                     plotlyOutput(ns("heatMap")))
             )
           )
-        )
-      })
-      
-      if (gseaType != 'None') {
-        progress$inc(.1, message = "Calculating corGSEA ... ")
-        progress$inc(.1, detail = paste("This may take about ~1 minute to complete."))
-        
+        })
         output$gseaUI <- renderUI({
           ns <- session$ns
           tagList(
             hr(),
-            h3("corGSEA results"),
+            h3("Top variable genes across groups"),
             hr(),
-            fluidRow(
-              column(width = 6, 
-                     plotOutput(ns("plotGSEA"))
-              ),
-              column(width = 6, 
-                     DT::dataTableOutput(ns("gseaData"))
-              )
-            )
+            fluidRow( style = "height:500px;",
+              column(width = 12,
+                     plotOutput(ns("heatMapSmall")))
+            ),
+            hr(),
+            h3("Gene expression across groups"),
+            hr(),
+            fluidRow(style = "height:500px;",
+                     column(width = 12,
+                            plotOutput(ns("geneTPMBoxplot"))))
           )
         })
+
+        progress$close()
+        primaryName <- primaryGene
         
-        print("Running GSEA ... ")
-        print(species)
-        if (gseaType == "Simple") {
-          if (species == "Human") {
-            TERM2GENE <- correlationAnalyzeR::hsapiens_simple_TERM2GENE
-          } else {
-            TERM2GENE <- correlationAnalyzeR::mmusculus_simple_TERM2GENE
-          }
-        } else {
-          if (species == "Human") {
-            TERM2GENE <- correlationAnalyzeR::hsapiens_complex_TERM2GENE
-          } else {
-            TERM2GENE <- correlationAnalyzeR::mmusculus_complex_TERM2GENE
-          }
-        }
-        ranks <- correlationData[,4]
-        names(ranks) <- correlationData[,1]
-        set.seed(1) # Reproducible
-        gseaData <- correlationAnalyzeR::myGSEA(ranks = ranks, 
-                                                nperm = 5000,
-                                                TERM2GENE = TERM2GENE, 
-                                                padjustedCutoff = pval,
-                                                returnDataOnly = T,
-                                                topPlots = F)
-        # Check if p cutoff value was raised 
-        eres <- gseaData$eres
-        minp <- min(eres$p.adjust)
-        print("PVALUE COMPA")
-        print(minp)
-        print(pval)
-        if (minp > pval) {
-          msg <- paste0("No results returned at p value of ", pval, 
-                        ". GSEA p value cutoff was raised to accommodate.")
-          shiny::showNotification(ui = msg, type = "warning")
-        }
-        downloadsList[['gseaData']] <- list("content" = eres,
-                                            "file" = ".tsv",
-                                            "uiName" = paste0(uiName, 
-                                                              " GSEA data"))
-        eres <- eres[,c(2, 5, 6, 7)]
-        eres <- eres[which(abs(eres[,2]) > 2),]
-        eres <- eres[order(eres[,2], decreasing = T),]
-        eres[,c(2,3,4)] <- apply(eres[,c(2,3,4)], 1:2, round, digits = 6)
-        eres <- eres[order(eres[,3], decreasing = F),]
+        callModule(module = downloadData, id = "singleModeDownloads", 
+                   primaryName = uiName, downloadsListReact = downloadsList)
+      } else {
+        tissueType <- gsub(tissueType, pattern = "0", replacement = " ")
+        downloadsList <- reactiveValues()
+        uiName <- paste0(primaryGene, " (",
+                         stringr::str_to_title(tissueType), " - ",
+                         stringr::str_to_title(sampleType), ")")
+        fileName <- paste0(primaryGene, "_",
+                           tissueType, "_",
+                           sampleType)
+        correlationData <- correlationData[order(correlationData[,4], decreasing = T),]
+        downloadsList[["correlationData"]] <- list("content" = correlationData,
+                                                   "uiName" = paste0(uiName,
+                                                                     " correlation data"),
+                                                   "file" = ".tsv")
         
-        eresTitles <- eres$Description
-        eresTitles <- correlationAnalyzeR::fixStrings(eresTitles)
-        eresTitles[which(nchar(eresTitles) > 45)] <- paste0(substr(eresTitles[which(nchar(eresTitles) > 45)], 1, 41), "...")
-        # Output gseaData
-        output$gseaData <- renderDataTable(server = T, {
-          eresDT <- eres
-          eresDT$Description <- createGSEAInfoLink(eresDT$Description, eresTitles)
-          datatable(eresDT, selection = list(mode = "single", selected = 1), 
-                    rownames = F, escape = F,
+        output$geneHist <- renderPlotly({
+          colnames(correlationData)[4] <- "vals"
+          p <- ggpubr::gghistogram(data = correlationData, x = "vals", y = "..count..",
+                                   bins = 100, ylab = "Frequency\n",
+                                   title = uiName, 
+                                   xlab = paste0(primaryGene, " correlation values")) +
+            ggplot2::expand_limits(x = 0, y = 0)
+          
+          p <- plotly::ggplotly(p, source = "singleSelect") %>%
+            # plotly::layout(dragmode = "select") %>%
+            config(plot_ly(),
+                   toImageButtonOptions= list(filename = paste0(fileName,
+                                                                "_correlationHistogram.png")))
+          s <- input$correlationData_rows_selected
+          if (length(s)) {
+            d2 <- correlationData[,c(1,3,4)]
+            d2 <- unique(d2)
+            colnames(d2)[3] <- "vals"
+            # correlationData$vals[s]
+            p <- p %>%
+              plotly::add_segments(x = d2$vals[s], xend = d2$vals[s], y = 0,
+                                   yend = 3000, color = "FF0404")
+          } 
+          p
+        })
+        
+        # Make correlations datatable
+        output$correlationData <- DT::renderDataTable(server = T,{
+          correlationData$geneName <- createGeneInfoLink(correlationData$geneName)
+          d2 <- correlationData
+          d2 <- d2[,c(1,3,4)]
+          d2 <- unique(d2)
+          datatable(d2, selection = "single", rownames = F, escape = F,
                     options = list(
                       pageLength = 6,
                       dom = "ftprl",
                       scrollX = TRUE
                     ),
-                    colnames = c("Pathway", "Enrichment (normalized)",
-                                 "Pval", "Padj"))
-        }, escape = F)
+                    colnames = c("Gene Name", 
+                                 "Description", "Correlation Value"))
+        }, escape = FALSE)
         
-        plotGSEA <- reactive({
-          print("inside plot")
-          s <- input$gseaData_rows_selected
-          if (length(s)) {
-            id <- eres[s,1]
-            print(id)
-            titleID <- eresTitles[s]
-            print(titleID)
-          } else{
-            print("NO ID Selected ----- showing top")
-            id <- eres[1,1]
-            titleID <- eresTitles[1]
-          }
-          
-          p <- clusterProfiler::gseaplot(gseaData$EGMT, 
-                                         geneSetID = id, 
-                                         title = titleID)
-          p
-        })
-        
-        output$plotGSEA <- renderPlot({
-          plotGSEA()
-        })
-        progress$close()
-      } else {
-        output$gseaUI <- renderUI({
+        output$correlationsUI <- renderUI({
+          ns <- session$ns
           tagList(
             hr(),
-            h4(em("Choose a 'GSEA type' to analyze correlated pathways.")),
-            hr()
+            h3("Correlation data"),
+            hr(),
+            fluidRow(
+              column(width = 6, #title = "Correlation Histogram",
+                     plotlyOutput(ns("geneHist"))
+              ),
+              column(width =  6, #title = "Correlation Data",
+                     DT::dataTableOutput(ns("correlationData"))
+              )
+            )
           )
         })
-        progress$close()
+        
+        if (gseaType != 'None') {
+          pval <- .05
+          progress$inc(.1, message = "Calculating corGSEA ... ")
+          progress$inc(.1, detail = paste("This may take ~1 minute to complete."))
+          
+          output$gseaUI <- renderUI({
+            ns <- session$ns
+            tagList(
+              hr(),
+              h3("corGSEA results"),
+              hr(),
+              fluidRow(
+                column(width = 6, 
+                       plotOutput(ns("plotGSEA"))
+                ),
+                column(width = 6, 
+                       DT::dataTableOutput(ns("gseaData"))
+                )
+              )
+            )
+          })
+          
+          if (gseaType == "Simple") {
+            if (species == "Human") {
+              TERM2GENE <- correlationAnalyzeR::hsapiens_simple_TERM2GENE
+            } else {
+              TERM2GENE <- correlationAnalyzeR::mmusculus_simple_TERM2GENE
+            }
+          } else {
+            if (species == "Human") {
+              TERM2GENE <- correlationAnalyzeR::hsapiens_complex_TERM2GENE
+            } else {
+              TERM2GENE <- correlationAnalyzeR::mmusculus_complex_TERM2GENE
+            }
+          }
+          ranks <- correlationData[,4]
+          names(ranks) <- correlationData[,1]
+          set.seed(1) # Reproducible
+          gseaData <- correlationAnalyzeR::myGSEA(ranks = ranks, 
+                                                  nperm = 2000,
+                                                  TERM2GENE = TERM2GENE, 
+                                                  padjustedCutoff = pval,
+                                                  returnDataOnly = T,
+                                                  topPlots = F)
+          # Check if p cutoff value was raised 
+          eres <- gseaData$eres
+          minp <- min(eres$p.adjust)
+          if (minp > pval) {
+            msg <- paste0("No results returned at p value of ", pval, 
+                          ". corGSEA p value cutoff was raised to accommodate.")
+            shiny::showNotification(ui = msg, type = "warning")
+          }
+          downloadsList[['gseaData']] <- list("content" = eres,
+                                              "file" = ".tsv",
+                                              "uiName" = paste0(uiName, 
+                                                                " corGSEA data"))
+          eres <- eres[,c(2, 5, 6, 7)]
+          eres <- eres[which(abs(eres[,2]) > 2),]
+          eres <- eres[order(eres[,2], decreasing = T),]
+          eres[,c(2,3,4)] <- apply(eres[,c(2,3,4)], 1:2, round, digits = 7)
+          eres <- eres[order(eres[,3], decreasing = F),]
+          
+          eresTitles <- eres$Description
+          eresTitles <- correlationAnalyzeR::fixStrings(eresTitles)
+          eresTitles[which(nchar(eresTitles) > 45)] <- paste0(substr(eresTitles[which(nchar(eresTitles) > 45)], 1, 41), "...")
+          # Output gseaData
+          output$gseaData <- renderDataTable(server = T, {
+            eresDT <- eres
+            eresDT$Description <- createGSEAInfoLink(eresDT$Description, eresTitles)
+            datatable(eresDT, selection = list(mode = "single", selected = 1), 
+                      rownames = F, escape = F,
+                      options = list(
+                        pageLength = 6,
+                        dom = "ftprl",
+                        scrollX = TRUE
+                      ),
+                      colnames = c("Pathway", "Enrichment (normalized)",
+                                   "Pval", "Padj"))
+          }, escape = F)
+          plotGSEA <- reactive({
+            s <- input$gseaData_rows_selected
+            if (length(s)) {
+              id <- eres[s,1]
+              titleID <- eresTitles[s]
+            } else{
+              id <- eres[1,1]
+              titleID <- eresTitles[1]
+            }
+            p <- clusterProfiler::gseaplot(gseaData$EGMT, 
+                                           geneSetID = id, 
+                                           title = titleID)
+            p
+          })
+          
+          output$plotGSEA <- renderPlot({
+            plotGSEA()
+          })
+          progress$close()
+        } else {
+          output$gseaUI <- renderUI({
+            tagList(
+              hr(),
+              h4(em("Choose a 'corGSEA type' to analyze correlated pathways.")),
+              hr()
+            )
+          })
+          progress$close()
+        }
+        
+        primaryName <- primaryGene
+        
+        callModule(module = downloadData, id = "singleModeDownloads", 
+                   primaryName = uiName, downloadsListReact = downloadsList)
       }
-      
-      primaryName <- primaryGene
-      
-      callModule(module = downloadData, id = "singleModeDownloads", 
-                 primaryName = uiName, downloadsListReact = downloadsList)
-      
     })
   })
 }
@@ -646,15 +836,23 @@ geneVsGeneModeAnalysisUI <- function(id) {
                        'Specify which correlations to analyze by choosing "Human" or "Mouse".')
     ),
     popify(
-      radioButtons(inputId = ns("gseaType"), label = "GSEA type",
+      radioButtons(inputId = ns("gseaType"), label = "corGSEA type",
                    choices = c("Simple", "Complex")), 
       placement = "right", 
       title = 'Select corGSEA type', options=list(container="body"),
-      content = paste0('Use GSEA to discover pathways that correlate ',
+      content = paste0('Use corGSEA to discover pathways that correlate ',
                        'with your gene of interest. ',
                        'Choose "Simple" to rapidly enrich for common genesets',
-                       ' (MSIGDB genesets "H", "C2:CP" and "C5:BP").',
+                       ' (MSIGDB genesets "H", "C2", "C5", and "C6")',
                        ' Choose "Complex" to consider all MSIGDB genesets.')
+    ),
+    popify(title = "Cross comparison mode", 
+           placement = "right", options=list(container="body"),
+           switchInput(ns("crossComparisonMode"), value = FALSE, label = "Group mode"),
+           content = paste0('Cross comparison mode is a new analysis style for ',
+                            'viewing correlations for a gene across tissue/disease groups.',
+                            ' Select whether to examine differences across "Normal", "Cancer", ',
+                            'or "All" tissue groups.')
     ),
     fluidRow(
       column(4, actionButton(ns("do"), "Analyze"))
@@ -664,12 +862,12 @@ geneVsGeneModeAnalysisUI <- function(id) {
 geneVsGeneModeAnalysis <- function(input, output, session, 
                                        parent_session, GlobalData) {
   
-  species <- reactive({input$species})
+  crossComparisonMode <- reactive({input$crossComparisonMode})
+  observe({
+    crossComparisonMode <- input$crossComparisonMode
+  })
   do <- reactive({input$do})
-  # do <- reactive({input$do})
-  print(species)
-  print(do)
-  
+  species <- reactive({input$species})
   geneOne <- callModule(singleGeneInput, "singleGeneInputOne",
                         parent_session = parent_session,
                         GlobalData = GlobalData,
@@ -699,6 +897,44 @@ geneVsGeneModeAnalysis <- function(input, output, session,
                               tissueType = tissueTypeTwo)
 
   
+  observe({
+    crossComparisonMode <- input$crossComparisonMode
+    speciesSelected <- input$species
+    if (crossComparisonMode) {
+      updateRadioButtons(
+        inputId = "gseaType", session = session, 
+        choices = c("None"), selected = "None"
+      )
+    } else {
+      updateRadioButtons(inputId = "gseaType", label = "corGSEA type",
+                         choices = c("Simple", "Complex"),
+                         selected = "Simple", session = session)
+    }
+    # Force input boxes to update if user chooses group mode
+    tissueType <- callModule(tissueTypeInput, "tissueTypeInputOne",
+                             parent_session = parent_session,
+                             GlobalData = GlobalData,
+                             species = species,
+                             crossComparisonMode = input$crossComparisonMode)
+    sampleType <- callModule(sampleTypeInput, "tissueTypeInputOne",
+                             parent_session = parent_session,
+                             GlobalData = GlobalData,
+                             species = species, 
+                             tissueType = tissueType)
+    tissueType <- callModule(tissueTypeInput, "tissueTypeInputTwo",
+                             parent_session = parent_session,
+                             GlobalData = GlobalData,
+                             species = species,
+                             crossComparisonMode = input$crossComparisonMode)
+    sampleType <- callModule(sampleTypeInput, "tissueTypeInputTwo",
+                             parent_session = parent_session,
+                             GlobalData = GlobalData,
+                             species = species, 
+                             tissueType = tissueType)
+  })
+  
+  
+  
   data <- reactiveVal()
   data <- eventReactive(eventExpr = input$do, {
     geneOne <- geneOne()
@@ -716,7 +952,6 @@ geneVsGeneModeAnalysis <- function(input, output, session,
     species <- input$species
     gseaType <- input$gseaType
     pval <- input$pval
-    print(geneOne)
     # Validate inputs
     shiny::validate(
       need(geneOne != "", "Please select Gene A")
@@ -725,10 +960,21 @@ geneVsGeneModeAnalysis <- function(input, output, session,
       need(geneTwo != "", "Please select Gene B")
     )
     
+    if (geneOne == geneTwo &
+        sampleTypeOne == sampleTypeTwo & 
+        tissueTypeOne == tissueTypeTwo & 
+        sampleTypeOne != "-") {
+      showNotification(paste0("Please select two different genes, tissue types,",
+                              " and/or disease states to compare.",
+                              " Alternatively, select 'Group mode'."),
+                       type = "error", duration = 12)
+    }
+    
     shiny::validate(
       need(expr = {geneOne != geneTwo |
              sampleTypeOne != sampleTypeTwo |
-             tissueTypeOne != tissueTypeTwo}, 
+             tissueTypeOne != tissueTypeTwo |
+          sampleTypeOne == "-"}, 
           message = 
             "Please select two different genes, tissue types, and/or disease states.")
     )
@@ -762,50 +1008,94 @@ geneVsGeneModeAnalysis <- function(input, output, session,
                                GlobalData = GlobalData,
                                session = session)
     
-    
-    
-    
-    progress$inc(.1, message = paste0("Calculating corGSEA for ", geneOne,
-                                      " and ", geneTwo, " ... "))
-    progress$inc(.1, detail = paste("This may take 1-2 minutes to complete."))
-    
     genesOfInterest <- c(cleanResOne$primaryGene, cleanResTwo$primaryGene)
-    Sample_Type <- c(cleanResOne$sampleType, cleanResTwo$sampleType)
-    Tissue <- c(cleanResOne$tissueType, cleanResTwo$tissueType)
-    gseaType <- tolower(gseaType)
-
-    pairedRes <- correlationAnalyzeR::analyzeGenePairs(genesOfInterest = genesOfInterest, 
-                                                       Sample_Type = Sample_Type,
-                                                       Tissue = Tissue, 
-                                                       Species = cleanResOne$selectedSpecies,
-                                                       GSEA_Type = gseaType, 
-                                                       returnDataOnly = T,
-                                                       topPlots = F, 
-                                                       runGSEA = T)
-    dataOrig <- pairedRes$compared$correlations
-    data <- cbind(rownames(dataOrig), dataOrig)
-    colnames(data)[1] <- "geneName"
-    # data <- data[which(data[,1] != cleanRes$primaryGene),]
-    rownames(data) <- NULL
-    data <- merge(x = cleanResOne$basicGeneInfo, y = data, by = "geneName")
-    colnames(data)[c(4:7)] <- colnames(dataOrig)
-    pairedRes[["processedCorrelationsFrame"]] <- data
     
-    print("inside single mode do: ")
-    print(input$do)
-    res <- list("geneVsGeneResults" = pairedRes,
-                "species" = species,
-                "gseaType" = gseaType,
-                "pval" = pval,
-                "geneOne" = geneOne,
-                "sampleTypeOne" = sampleTypeOne,
-                "tissueTypeOne" = tissueTypeOne,
-                "geneTwo" = geneTwo,
-                "sampleTypeTwo" = sampleTypeTwo,
-                "tissueTypeTwo" = tissueTypeTwo,
-                "progress" = progress)
-
-    res
+    if (input$crossComparisonMode) {
+      if (cleanResOne$selectedSpecies == "mmusculus" &
+          length(unique(genesOfInterest)) == 1) {
+        progress$close()
+        
+        showNotification(paste0("Normal vs Cancer group mode unavailable for",
+                         " 'Mouse' due to sample number disparity. ",
+                         "Select two different genes or select 'Human' samples."), 
+                         type = "error", duration = 15)
+        # Force stall with validate
+        shiny::validate(
+          need(expr = {geneOne != geneTwo}, 
+              message = 
+                "This message should not be visible to user.")
+        )
+        
+      }
+      # # Bug testing
+      # genesOfInterest <- c("ATM", "SLC3A2")
+      progress$inc(.1, message = "Running group mode ... ")
+      progress$inc(.1, detail = "This may take ~1 minute to complete.")
+      pairedRes <- correlationAnalyzeR::analyzeGenePairs(genesOfInterest = genesOfInterest, 
+                                                         Species = cleanResOne$selectedSpecies,
+                                                         returnDataOnly = T, 
+                                                         crossCompareMode = T)
+      dataOrig <- pairedRes$Correlations
+      data <- cbind(rownames(dataOrig), dataOrig)
+      colnames(data)[1] <- "geneName"
+      # data <- data[which(data[,1] != cleanRes$primaryGene),]
+      rownames(data) <- NULL
+      data <- merge(x = cleanResOne$basicGeneInfo, y = data, by = "geneName")
+      pairedRes[["Correlations"]] <- data
+      res <- list("geneVsGeneResults" = pairedRes,
+                  "species" = species,
+                  "gseaType" = gseaType,
+                  "pval" = pval,
+                  "geneOne" = geneOne,
+                  "sampleTypeOne" = sampleTypeOne,
+                  "tissueTypeOne" = tissueTypeOne,
+                  "geneTwo" = geneTwo,
+                  "sampleTypeTwo" = sampleTypeTwo,
+                  "tissueTypeTwo" = tissueTypeTwo,
+                  "crossCompareMode" = TRUE,
+                  "progress" = progress)
+      
+      res
+    } else {
+      progress$inc(.1, message = paste0("Calculating corGSEA for ", geneOne,
+                                        " and ", geneTwo, " ... "))
+      progress$inc(.1, detail = paste("This may take 1-2 minutes to complete."))
+      
+      genesOfInterest <- c(cleanResOne$primaryGene, cleanResTwo$primaryGene)
+      Sample_Type <- c(cleanResOne$sampleType, cleanResTwo$sampleType)
+      Tissue <- c(cleanResOne$tissueType, cleanResTwo$tissueType)
+      gseaType <- tolower(gseaType)
+      
+      pairedRes <- correlationAnalyzeR::analyzeGenePairs(genesOfInterest = genesOfInterest, 
+                                                         Sample_Type = Sample_Type,
+                                                         Tissue = Tissue, 
+                                                         Species = cleanResOne$selectedSpecies,
+                                                         GSEA_Type = gseaType, 
+                                                         returnDataOnly = T,
+                                                         topPlots = F, 
+                                                         runGSEA = T)
+      dataOrig <- pairedRes$compared$correlations
+      data <- cbind(rownames(dataOrig), dataOrig)
+      colnames(data)[1] <- "geneName"
+      # data <- data[which(data[,1] != cleanRes$primaryGene),]
+      rownames(data) <- NULL
+      data <- merge(x = cleanResOne$basicGeneInfo, y = data, by = "geneName")
+      colnames(data)[c(4:7)] <- colnames(dataOrig)
+      pairedRes[["processedCorrelationsFrame"]] <- data
+      res <- list("geneVsGeneResults" = pairedRes,
+                  "species" = species,
+                  "gseaType" = gseaType,
+                  "pval" = pval,
+                  "geneOne" = geneOne,
+                  "sampleTypeOne" = sampleTypeOne,
+                  "tissueTypeOne" = tissueTypeOne,
+                  "geneTwo" = geneTwo,
+                  "sampleTypeTwo" = sampleTypeTwo,
+                  "tissueTypeTwo" = tissueTypeTwo,
+                  "progress" = progress)
+      
+      res
+    }
   })
   return(data)
 }
@@ -840,221 +1130,369 @@ geneVsGeneModePlots <- function(input, output, session,
     geneTwo <- dataList[["geneTwo"]]
     tissueTypeTwo <- dataList[["tissueTypeTwo"]]
     sampleTypeTwo <- dataList[["sampleTypeTwo"]]
+    progress <- dataList[["progress"]]
     pairedRes <- dataList[["geneVsGeneResults"]]
-    
     # # Bug testing
     # pairedRes <- pairedRes
-    
-    correlations <- pairedRes[["processedCorrelationsFrame"]]
-    corrPlot <- pairedRes[["compared"]][["correlationPlot"]]
-    heatGenes <- pairedRes[["compared"]][["correlationVarianceHeatmap"]]
-    heatPaths <- pairedRes[["compared"]][["correlatedPathwaysHeatmap"]]
-    correlatedPathwaysDF <- pairedRes[["compared"]][["correlatedPathwaysDataFrame"]]
-    
-    
-    if (species == "Human") {
-      GeneInfo <- GlobalData$HS_basicGeneInfo
-    } else {
-      GeneInfo <- GlobalData$MM_basicGeneInfo
-    }
-    tissueTypeOne <- gsub(tissueTypeOne, pattern = "0", replacement = " ")
-    tissueTypeTwo <- gsub(tissueTypeTwo, pattern = "0", replacement = " ")
-    longName <- ifelse((tissueTypeOne != tissueTypeTwo | 
-                          sampleTypeOne != sampleTypeTwo),
-                       yes = T, no = F)
-    uiNameOne <- paste0(geneOne, " (",
-                        tissueTypeOne, " - ",
-                        sampleTypeOne, ")")
-    fileNameOne <- paste0(geneOne, "_",
-                          tissueTypeOne, "_",
-                          sampleTypeOne)
-    uiNameTwo <- paste0(geneTwo, " (",
-                        tissueTypeTwo, " - ",
-                        sampleTypeTwo, ")")
-    fileNameTwo <- paste0(geneTwo, "_",
-                          tissueTypeTwo, "_",
-                          sampleTypeTwo)
-    if (longName) {
+    if ("crossCompareMode" %in% names(dataList)) {
+      progress$inc(.4, message = "Preparing group mode result files ... ")
+      on.exit(progress$close())
+      dataList <- pairedRes[["pairResList"]]
+      mode <- pairedRes[["mode"]]
+      correlations <- pairedRes[["Correlations"]]
       
-      uiName <- paste0(uiNameOne, " vs ", uiNameTwo)
-      fileName <- paste0(fileNameOne, "_vs_", fileNameTwo)
+      if (mode == "cross_geneVsGene") {
+        uiName <- paste0(geneOne, " vs ", geneTwo)
+        ht <- 30
+      } else {
+        uiName <- paste0(geneOne, " - normal vs. cancer")
+        ht <- 14
+      }
+      downloadDataPairsCor <- list(
+        "content" = correlations,
+        "uiName" = paste0(uiName, " correlation data"),
+        "file" = ".tsv"
+      )
+      plotListHeat <- list()
+      plotListScatter <- list()
+      for (i in 1:length(dataList)) {
+        name <- names(dataList)[i]
+        plotListScatter[[i]] <- dataList[[i]][["scatterPlot"]]
+        plotListHeat[[i]] <- dataList[[i]][["heatMap"]][[4]]
+        
+      }
+      
+      ga <- ggpubr::ggarrange(plotlist = plotListScatter, ncol = 3)
+      # output$scatterGrid <- renderPlot({
+      #   ga
+      # }, height = 1000)
+      
+      ge <- gridExtra::arrangeGrob(grobs = plotListHeat, ncol = 7)
+      tmp <- paste0("www/tmp/", as.character(session$token)[1])
+      tmpHeatFile <- file.path(tmp, paste0(uiName, " heatMap.pdf"))
+      tmpHeatFile <- gsub(tmpHeatFile, pattern = " ", replacement = "_")
+      ggplot2::ggsave(ge, filename = tmpHeatFile, height = ht, width = 40)
+      tmpHeatFile <- gsub(tmpHeatFile, pattern = "www/", replacement = "")
+      tmpscatterFile <- file.path(tmp, paste0(uiName, " scatterMap.pdf"))
+      tmpscatterFile <- gsub(tmpscatterFile, pattern = " ", replacement = "_")
+      ggpubr::ggexport(plotlist = plotListScatter, ncol = 4, 
+                       filename = tmpscatterFile, height = 5, width = 20)
+      tmpscatterFile <- gsub(tmpscatterFile, pattern = "www/", replacement = "")
+      
+      output$correlationsUI <- renderUI({
+        ns <- session$ns
+        tagList(
+          hr(),
+          h3("Compared correlation scatter plots"),
+          hr(),
+          fluidRow(
+            column(12,
+                tags$iframe(style="height:600px; width:100%",
+                            src=tmpscatterFile))
+          )
+        )
+      })
+      
+      
+      compResTPM <- pairedRes[["singleGeneCrossCompareResults"]]
+      if (mode == "cross_geneVsGene") {
+        output$comparedPathsUI <- renderUI({
+          ns <- session$ns
+          tagList(
+            hr(),
+            h3("Compared correlation heatmaps"),
+            hr(),
+            fluidRow(
+              column(12,
+                     tags$iframe(style="height:600px; width:100%",
+                                 src=tmpHeatFile))
+            ),
+            hr(),
+            h3("Gene expression across groups"),
+            hr(),
+            fluidRow(style = "height:500px;",
+                     column(width = 12,
+                            plotOutput(ns("geneTPMBoxplot1")))),
+            br(),
+            fluidRow(style = "height:500px;",
+                     column(width = 12,
+                            plotOutput(ns("geneTPMBoxplot2"))))
+          )
+        })
+        geneTPMBoxplot1 <- compResTPM[[1]][["TPM_boxPlot"]]
+        geneTPMBoxplotData1 <- compResTPM[[1]][["TPM_DF"]]
+        downloadsListTPM1 <- list("content" = geneTPMBoxplotData1,
+                                  "uiName" = paste0(geneOne,
+                                                    " normalized expression (TPM)"),
+                                  "file" = ".tsv")
+        
+        output$geneTPMBoxplot1 <- renderPlot(height = 500, {
+          geneTPMBoxplot1
+        })
+        geneTPMBoxplot2 <- compResTPM[[2]][["TPM_boxPlot"]]
+        geneTPMBoxplotData2 <- compResTPM[[2]][["TPM_DF"]]
+        downloadsListTPM2 <- list("content" = geneTPMBoxplotData2,
+                                  "uiName" = paste0(geneTwo,
+                                                    " normalized expression (TPM)"),
+                                  "file" = ".tsv")
+        
+        output$geneTPMBoxplot2 <- renderPlot(height = 500, {
+          geneTPMBoxplot2
+        })
+        downloadsList <- reactiveValues("correlationData" = downloadDataPairsCor,
+                                        "geneOneTPM" = downloadsListTPM1,
+                                        "geneTwoTPM" = downloadsListTPM2)
+      } else {
+        output$comparedPathsUI <- renderUI({
+          ns <- session$ns
+          tagList(
+            hr(),
+            h3("Compared correlation heatmaps"),
+            hr(),
+            fluidRow(
+              column(12,
+                     tags$iframe(style="height:600px; width:100%",
+                                 src=tmpHeatFile))
+            ),
+            hr(),
+            h3("Gene expression across groups"),
+            hr(),
+            fluidRow(style = "height:500px;",
+                     column(width = 12,
+                            plotOutput(ns("geneTPMBoxplot"))))
+          )
+        })
+        geneTPMBoxplot <- compResTPM[[1]][["TPM_boxPlot"]]
+        output$geneTPMBoxplot <- renderPlot(height = 500, {
+          geneTPMBoxplot
+        })
+        geneTPMBoxplotData <- compResTPM[[1]][["TPM_DF"]]
+        downloadsListTPM <- list("content" = geneTPMBoxplotData,
+                                  "uiName" = paste0(uiName,
+                                                    " normalized expression (TPM)"),
+                                  "file" = ".tsv")
+        
+        downloadsList <- reactiveValues("correlationData" = downloadDataPairsCor,
+                                        "geneTMP" = downloadsListTPM)
+      }
+      
+      
+      
+      callModule(module = downloadData, id = "geneVsGeneModeDownloads", 
+                 primaryName = uiName, downloadsListReact = downloadsList)
       
     } else {
-      uiName <- paste0(geneOne, " vs ", geneTwo, "(",
-                       tissueTypeTwo, " - ",
-                       sampleTypeTwo, ")")
-      fileName <- paste0(geneOne, "_vs_", geneTwo, "_",
+      correlations <- pairedRes[["processedCorrelationsFrame"]]
+      corrPlot <- pairedRes[["compared"]][["correlationPlot"]]
+      heatGenes <- pairedRes[["compared"]][["correlationVarianceHeatmap"]]
+      heatPaths <- pairedRes[["compared"]][["correlatedPathwaysHeatmap"]]
+      correlatedPathwaysDF <- pairedRes[["compared"]][["correlatedPathwaysDataFrame"]]
+      
+      
+      if (species == "Human") {
+        GeneInfo <- GlobalData$HS_basicGeneInfo
+      } else {
+        GeneInfo <- GlobalData$MM_basicGeneInfo
+      }
+      tissueTypeOne <- gsub(tissueTypeOne, pattern = "0", replacement = " ")
+      tissueTypeTwo <- gsub(tissueTypeTwo, pattern = "0", replacement = " ")
+      longName <- ifelse((tissueTypeOne != tissueTypeTwo | 
+                            sampleTypeOne != sampleTypeTwo),
+                         yes = T, no = F)
+      uiNameOne <- paste0(geneOne, " (",
+                          tissueTypeOne, " - ",
+                          sampleTypeOne, ")")
+      fileNameOne <- paste0(geneOne, "_",
+                            tissueTypeOne, "_",
+                            sampleTypeOne)
+      uiNameTwo <- paste0(geneTwo, " (",
+                          tissueTypeTwo, " - ",
+                          sampleTypeTwo, ")")
+      fileNameTwo <- paste0(geneTwo, "_",
                             tissueTypeTwo, "_",
                             sampleTypeTwo)
-    }
-    
-    progress <- dataList[["progress"]]
-    on.exit(progress$close())
-    progress$inc(.4, message = "Returning results ... ")
-    # Make a plot
-    output$corrScatter <- renderPlot({
-      corrPlot
-    })
-    corrPathDFReact <- reactive({
-      # Setup dataframe to match plotly data
-      correlatedPathwaysDT <- correlatedPathwaysDF[,c(1, 2, 6, 10, 11)]
-      correlatedPathwaysDT <- correlatedPathwaysDT[order(correlatedPathwaysDT$NES_variance, 
-                                                         decreasing = T),]
-
-      colnames(correlatedPathwaysDT)[1] <- c("Pathway")
-      rownames(correlatedPathwaysDT) <- NULL
-      correlatedPathwaysDT
-    })
-    
-    
-    
-    corrValDFReact <- reactive({
-      # Setup dataframe to match plotly data
-      corrValDF <- correlations
-      corrValDF <- corrValDF[,c(1, 3:7)]
-      corrValDF <- unique(corrValDF)
-      corrValDF <- corrValDF[order(corrValDF$variance, decreasing = T),]
-      corrValDF <- corrValDF[which(! corrValDF$geneName %in% colnames(corrValDF)),]
-      rownames(corrValDF) <- NULL
-      colnames(corrValDF)[c(3:6)] <- colnames(correlations)[c(4:7)]
-      corrValDF
-    })
-    
-    downloadDataPairsCor <- list(
-      "content" = corrValDFReact(),
-      "uiName" = "Gene correlation values",
-      "file" = ".tsv"
-    )
-    downloadDataPairsPath <- list(
-      "content" = correlatedPathwaysDF,
-      "uiName" = "Pathway correlation values",
-      "file" = ".tsv"
-    )
-    
-    output$correlationData <- renderDataTable(server = T, {
+      if (longName) {
+        
+        uiName <- paste0(uiNameOne, " vs ", uiNameTwo)
+        fileName <- paste0(fileNameOne, "_vs_", fileNameTwo)
+        
+      } else {
+        uiName <- paste0(geneOne, " vs ", geneTwo, "(",
+                         tissueTypeTwo, " - ",
+                         sampleTypeTwo, ")")
+        fileName <- paste0(geneOne, "_vs_", geneTwo, "_",
+                           tissueTypeTwo, "_",
+                           sampleTypeTwo)
+      }
       
-      corrValDF <- corrValDFReact()
-      corrValDF[,c(3:6)] <- apply(corrValDF[,c(3:6)], 2, FUN = signif, digits = 3)
-      
-      cols <- colnames(corrValDF)
-      cols[1] <- "Gene Name"
-      cols[2] <- "Description"
-      cols[3] <- uiNameOne
-      cols[4] <- uiNameTwo
-      cols[c(5:6)] <- stringr::str_to_title(cols[c(5:6)])
+      on.exit(progress$close())
+      progress$inc(.4, message = "Returning results ... ")
+      # Make a plot
+      output$corrScatter <- renderPlot({
+        corrPlot
+      })
+      corrPathDFReact <- reactive({
+        # Setup dataframe to match plotly data
+        correlatedPathwaysDT <- correlatedPathwaysDF[,c(1, 2, 6, 10, 11)]
+        correlatedPathwaysDT <- correlatedPathwaysDT[order(correlatedPathwaysDT$NES_variance, 
+                                                           decreasing = T),]
+        
+        colnames(correlatedPathwaysDT)[1] <- c("Pathway")
+        rownames(correlatedPathwaysDT) <- NULL
+        correlatedPathwaysDT
+      })
       
       
       
-      # Replace gene name with HTML to call gene info modal
-      corrValDF$geneName <- createGeneInfoLink(corrValDF$geneName)
-      # Construct datatable
-      DT_out <- datatable(corrValDF, selection = "single",
-                          rownames = F, escape = F,  
-                          colnames = cols,
-                          options = list(dom = "ftprl",
-                                         scrollX = TRUE,
-                                         pageLength = 6)
+      corrValDFReact <- reactive({
+        # Setup dataframe to match plotly data
+        corrValDF <- correlations
+        corrValDF <- corrValDF[,c(1, 3:7)]
+        corrValDF <- unique(corrValDF)
+        corrValDF <- corrValDF[order(corrValDF$variance, decreasing = T),]
+        corrValDF <- corrValDF[which(! corrValDF$geneName %in% colnames(corrValDF)),]
+        rownames(corrValDF) <- NULL
+        colnames(corrValDF)[c(3:6)] <- colnames(correlations)[c(4:7)]
+        colnames(corrValDF)[3] <- convertToColnames(uiNameOne)
+        colnames(corrValDF)[4] <- convertToColnames(uiNameTwo)
+        corrValDF
+      })
+      
+      downloadDataPairsCor <- list(
+        "content" = corrValDFReact(),
+        "uiName" = "Gene correlation values",
+        "file" = ".tsv"
       )
-      DT_out
-    }, escape = F)
-    
-    output$heatGenes <- renderPlot({
-      heatGenes
-    })
-    
-    output$correlationsUI <- renderUI({
-      ns <- session$ns
-      tagList(
-        hr(),
-        h3("Compared correlations"),
-        hr(),
-        fluidRow(
-          column(width = 6, #title = "Correlation Histogram",
-                 plotOutput(ns("corrScatter"))
+      downloadDataPairsPath <- list(
+        "content" = correlatedPathwaysDF,
+        "uiName" = "Pathway correlation values",
+        "file" = ".tsv"
+      )
+      
+      output$correlationData <- renderDataTable(server = T, {
+        
+        corrValDF <- corrValDFReact()
+        corrValDF[,c(3:6)] <- apply(corrValDF[,c(3:6)], 2, FUN = signif, digits = 3)
+        
+        cols <- colnames(corrValDF)
+        cols[1] <- "Gene Name"
+        cols[2] <- "Description"
+        cols[3] <- uiNameOne
+        cols[4] <- uiNameTwo
+        cols[c(5:6)] <- stringr::str_to_title(cols[c(5:6)])
+        
+        # Replace gene name with HTML to call gene info modal
+        corrValDF$geneName <- createGeneInfoLink(corrValDF$geneName)
+        # Construct datatable
+        DT_out <- datatable(corrValDF, selection = "single",
+                            rownames = F, escape = F,  
+                            colnames = cols,
+                            options = list(dom = "ftprl",
+                                           scrollX = TRUE,
+                                           pageLength = 6)
+        )
+        DT_out
+      }, escape = F)
+      
+      output$heatGenes <- renderPlot({
+        heatGenes
+      })
+      
+      output$correlationsUI <- renderUI({
+        ns <- session$ns
+        tagList(
+          hr(),
+          h3("Compared correlations"),
+          hr(),
+          fluidRow(
+            column(width = 6, #title = "Correlation Histogram",
+                   plotOutput(ns("corrScatter"))
+            ),
+            column(width = 6, #title = "Correlation Histogram",
+                   plotOutput(ns("heatGenes"))
+            )
           ),
-          column(width = 6, #title = "Correlation Histogram",
-                 plotOutput(ns("heatGenes"))
-          )
-        ),
-        br(),
-        br(),
-        fluidRow(
-          column(width =  12, #offset = 2, #title = "Correlation Data",
-                 DT::dataTableOutput(ns("correlationData"))
+          br(),
+          br(),
+          fluidRow(
+            column(width =  12, #offset = 2, #title = "Correlation Data",
+                   DT::dataTableOutput(ns("correlationData"))
+            )
           )
         )
-      )
-    })
-    
-    
-    output$heatPaths <- renderPlot({
-      heatPaths
-    })
-    
-    output$correlatedPathwaysDF <- renderDataTable(server = T, {
+      })
       
-      eres <- corrPathDFReact()
-      cols <- colnames(eres)
-      cols[1] <- "Pathway"
-      cols <- gsub(x = cols, pattern = "_", replacement = " ")
-      cols <- gsub(x = cols, pattern = "NES ", replacement = "")
-      cols[2] <- uiNameOne
-      cols[3] <- uiNameTwo
-      cols[c(4:5)] <- stringr::str_to_title(cols[c(4:5)])
       
-      eres <- eres[order(eres[,5], decreasing = T),]
-      eres[,c(2:5)] <- apply(eres[,c(2:5)], 1:2, round, digits = 3)
-      eresTitles <- eres[,1]
+      output$heatPaths <- renderPlot({
+        heatPaths
+      })
       
-      eresTitles[which(nchar(eresTitles) > 45)] <- paste0(substr(eresTitles[which(nchar(eresTitles) > 45)],
-                                                                 1, 41), "...")
-      # Replace gene name with HTML to call gene info modal
-      eres[,1] <- createGSEAInfoLink(val = eres[,1],
-                                     valTitle = eresTitles)  
-      print(colnames(eres))
-      print(cols)
-      rownames(eres) <- NULL
-      # Construct datatable
-      DT_out <- datatable(eres, 
-                          rownames = F, escape = F,  
-                          colnames = cols,
-                          options = list(dom = "ftprl",
-                                         scrollX = TRUE,
-                                         pageLength = 6)
-      )
-      DT_out
-    }, escape = F)
-    
-    output$comparedPathsUI <- renderUI({
-      ns <- session$ns
-      tagList(
-        hr(),
-        h3("Compared corGSEA results"),
-        hr(),
-        fluidRow(
-          
-          column(width = 8, offset = 2, #title = "Correlation Histogram",
-                 plotOutput(ns("heatPaths"))
-                 
-          )
-        ),
-        br(),
-        br(),
-        fluidRow(
-          column(width =  12, #offset = 3, #title = "Correlation Data",
-                 DT::dataTableOutput(ns("correlatedPathwaysDF"))
-          )
+      output$correlatedPathwaysDF <- renderDataTable(server = T, {
+        
+        eres <- corrPathDFReact()
+        cols <- colnames(eres)
+        cols[1] <- "Pathway"
+        cols <- gsub(x = cols, pattern = "_", replacement = " ")
+        cols <- gsub(x = cols, pattern = "NES ", replacement = "")
+        cols[2] <- uiNameOne
+        cols[3] <- uiNameTwo
+        cols[c(4:5)] <- stringr::str_to_title(cols[c(4:5)])
+        
+        eres <- eres[order(eres[,5], decreasing = T),]
+        eres[,c(2:5)] <- apply(eres[,c(2:5)], 1:2, round, digits = 3)
+        eresTitles <- eres[,1]
+        eresTitles <- correlationAnalyzeR::fixStrings(eresTitles)
+        eresTitles[which(nchar(eresTitles) > 45)] <- paste0(substr(eresTitles[which(nchar(eresTitles) > 45)],
+                                                                   1, 41), "...")
+        # Replace gene name with HTML to call gene info modal
+        eres[,1] <- createGSEAInfoLink(val = eres[,1],
+                                       valTitle = eresTitles)  
+        rownames(eres) <- NULL
+        # Construct datatable
+        DT_out <- datatable(eres, 
+                            rownames = F, escape = F,  
+                            colnames = cols,
+                            options = list(dom = "ftprl",
+                                           scrollX = TRUE,
+                                           pageLength = 6)
         )
-      )
-    })
-    
+        DT_out
+      }, escape = F)
 
-    downloadsList <- reactiveValues("correlationData" = downloadDataPairsCor,
-                                    "pathwayData" = downloadDataPairsPath)
-    
-    callModule(module = downloadData, id = "geneVsGeneModeDownloads", 
-               primaryName = uiName, downloadsListReact = downloadsList)
-    
+      output$comparedPathsUI <- renderUI({
+        ns <- session$ns
+        tagList(
+          hr(),
+          h3("Compared corGSEA results"),
+          hr(),
+          fluidRow(
+            
+            column(width = 8, offset = 2, #title = "Correlation Histogram",
+                   plotOutput(ns("heatPaths"))
+                   
+            )
+          ),
+          br(),
+          br(),
+          fluidRow(
+            column(width =  12, #offset = 3, #title = "Correlation Data",
+                   DT::dataTableOutput(ns("correlatedPathwaysDF"))
+            )
+          )
+          
+        )
+      })
+      
+      
+      downloadsList <- reactiveValues("correlationData" = downloadDataPairsCor,
+                                      "pathwayData" = downloadDataPairsPath
+                                      )
+      
+      callModule(module = downloadData, id = "geneVsGeneModeDownloads", 
+                 primaryName = uiName, downloadsListReact = downloadsList)
+      
+    }
+
     
   })
 }
@@ -1100,9 +1538,6 @@ geneVsGeneListModeAnalysis <- function(input, output, session,
   
   species <- reactive({input$species})
   do <- reactive({input$do})
-  # do <- reactive({input$do})
-  print(species)
-  print(do)
   
   primaryGene <- callModule(singleGeneInput, "singleGeneInput",
                             parent_session = parent_session,
@@ -1119,7 +1554,6 @@ geneVsGeneListModeAnalysis <- function(input, output, session,
                            tissueType = tissueType)
   
   secondaryGenes <- callModule(multiGeneInput, "multiGeneInput")
-  print(secondaryGenes)
   
   data <- reactiveVal()
   data <- eventReactive(eventExpr = input$do, {
@@ -1136,7 +1570,6 @@ geneVsGeneListModeAnalysis <- function(input, output, session,
     # Clean secondaryGenes input
     secondaryGenes <- strsplit(secondaryGenes, split = "\n")
     secondaryGenes <- unlist(secondaryGenes, use.names = F)
-    print(secondaryGenes)
     # Validate inputs
     shiny::validate(
       need(primaryGene != "", "Please select a gene")
@@ -1157,7 +1590,6 @@ geneVsGeneListModeAnalysis <- function(input, output, session,
                             GlobalData = GlobalData,
                             session = session)
     pass <- 1
-    # print(cleanRes)
     if (is.null(cleanRes$secondaryGenes)) {
       print("FAIL")
       showNotification(ui = "No valid secondary genes provided.", 
@@ -1471,12 +1903,9 @@ topologyModeAnalysis <- function(input, output, session,
     sampleType <- sampleType()
     sampleType <- tolower(sampleType)
     crossComparisonType <- input$crossComparisonType
-    print(crossComparisonType)
-    print(secondaryGenes)
     # Clean secondaryGenes input
     secondaryGenes <- strsplit(secondaryGenes, split = "\n")
     secondaryGenes <- unlist(secondaryGenes, use.names = F)
-    print(secondaryGenes)
     # # Bug testing
     # species <- "Human"
     # sampleType <- "Normal_Tissues"
@@ -1502,8 +1931,6 @@ topologyModeAnalysis <- function(input, output, session,
     progress$inc(.2, message = "Analyzing geneset topology ... ")
     # Warn if using less than 10 genes for pathway enrichment
     pass <- 1
-    print(cleanRes$secondaryGenes)
-    print(cleanRes$geneSetInputType)
     if (! cleanRes$geneSetInputType & length(cleanRes$secondaryGenes) < 3) {
       msg <- "Topology analysis requires 3+ valid genes."
       print("FAIL")
@@ -1639,17 +2066,13 @@ topologyModePlots <- function(input, output, session,
     
     dataListReact <- dataTables[["topologyModeData"]]
     dataList <- dataListReact()
-    print(names(dataList))
     do <- dataList$do
-    print(do)
     observeEvent(eventExpr = dataList, {
 
       selectedSpecies <- dataList$species
       data <- dataList$topologyModeData
       tissueType <- dataList[["tissueType"]]
       sampleType <- dataList[["sampleType"]]
-      print(names(data))
-      print(selectedSpecies)
       tissueType <- gsub(tissueType, pattern = "0", replacement = " ")
       
       uiName <- paste0(" (",
@@ -1881,7 +2304,6 @@ topologyModePlots <- function(input, output, session,
           dt_data <- PCADT$data
           type <- PCADT$type
           cluster <- PCADT$cluster
-          print("DT Observed!")
           PCADT_proxy <- dataTableProxy("PCADT", session = session,
                                           deferUntilFlush = TRUE)
           reloadData(PCADT_proxy)
@@ -1938,7 +2360,6 @@ topologyModePlots <- function(input, output, session,
         # Get indices of plotly-selected genes
         selection_varHeat <- reactive({
           s <- event_data("plotly_click")
-          print("PLOTLY SELECTED")
           df <- data.frame(s)
           df
         })
@@ -1959,26 +2380,16 @@ topologyModePlots <- function(input, output, session,
           dt_data <- dt_data[order(dt_data$y_coord),]
           s <- selection_varHeat()
           if (length(s)) {
-            print("SELECTION VARHEAT RENDERING IN DT")
             x <- s$x[1]
             y <- s$y[1]
             z <- s$z[1]
-            print(x)
-            print(y)
-            print(z)
-            
-            str(x)
-            str(y)
             
             plot_pinpoint <- as.character(plot_text_df[y,x])
             selectSize <- input$varHeatSelectSize
-            print("SELECT SIZE")
-            print(selectSize)
             y_pos_vec <- c(y-selectSize, y + selectSize)
             y_pos_vec[which(y_pos_vec < 1)] <- 1
             y_pos_vec[which(y_pos_vec > 1500)] <- 1500
             plot_pinpoints <- as.character(plot_text_df[c(y_pos_vec[1]:y_pos_vec[2]),x])
-            print(plot_pinpoints)
             genes <- strsplit(substr(plot_pinpoints, 6, 100), "<")
             genes <- sapply(genes, "[[", 1)
             dt_data <- dt_data[which(dt_data$geneName %in% genes),]
@@ -2010,7 +2421,6 @@ topologyModePlots <- function(input, output, session,
                 session = session)
         
         observeEvent(varDT(), {
-          print("DT varHeat Observed!")
           varHeat_proxy <- dataTableProxy("varDT", session = session,
                                                   deferUntilFlush = TRUE)
           reloadData(varHeat_proxy)
@@ -2022,13 +2432,11 @@ topologyModePlots <- function(input, output, session,
       }
       
       if ("inputGenes_pathwayEnrich" %in% names(data)) {
-        
-        
-        
         # Get the pathway enrichment results and display dotplot
         output$pathwayEnrichPlot <- renderPlot({
           eres <- data$inputGenes_pathwayEnrich_data
-          shiny::validate(need(length(eres), "No results returned at selected p value cutoff. Please increase it."))
+          shiny::validate(need(length(eres),
+                               "No results returned at selected p value cutoff. Please increase it."))
           dp <- data$inputGenes_pathwayEnrich_dotplot
           dp
         })
@@ -2072,7 +2480,6 @@ topologyModePlots <- function(input, output, session,
         # This observer is needed because of a bug/feature of shiny DT::
         # It will look for changes in PCADT and force the datatable to reload
         observeEvent(pathwayEnrichDT(), {
-          print("DT Observed!")
           pathwayEnrichDT_proxy <- dataTableProxy("pathwayEnrichDT", session = session,
                                                   deferUntilFlush = TRUE)
           reloadData(pathwayEnrichDT_proxy)

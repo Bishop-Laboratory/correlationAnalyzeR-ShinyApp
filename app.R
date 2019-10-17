@@ -152,7 +152,15 @@ ui <- tagList(
 
 server <- function(input, output, session) {
   
+  # Make session-specific tmp dir. Delete once finished with session. 
+  tmp <- paste0("www/tmp/", as.character(session$token)[1])
+  dir.create(tmp)
+  onStop(function() {
+    tmp <- paste0("www/tmp/", as.character(session$token)[1])
+    unlink(tmp, force = T, recursive = T)
+  })
   
+  # Initialize module variables
   dataList <- reactiveValues(singleModeData = NULL, 
                              geneVsGeneListModeData = NULL, 
                              topologyModeData = NULL)
@@ -174,7 +182,6 @@ server <- function(input, output, session) {
                                                id = "topologyModeAnalysis", 
                                                parent_session = parent_session, 
                                                GlobalData = GlobalData)
-    
     
     # Pass analyses to plotting modules
     callModule(module = singleModePlots,

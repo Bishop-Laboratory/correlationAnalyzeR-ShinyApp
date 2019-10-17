@@ -1,16 +1,25 @@
+# Removes temporary files from www directory
+removeTmp <- function() {
+  unlink(x = "www/tmp")
+  dir.create("www/tmp")
+}
 
+# Fixes uiNames into colnames
+convertToColnames <- function(uiNameRaw) {
+  colName <- gsub(uiNameRaw, pattern = " - ", replacement = "_")
+  colName <- gsub(colName, pattern = " ", replacement = "_")
+  colName <- gsub(colName, pattern = "\\(|\\)", replacement = "")
+  return(colName)
+}
 
 # Create links in datatabels for gene info modal
 createGeneInfoLink <- function(val) {
-  print(val)
-  # sprintf(paste0('<a href="#" data-toggle="modal" data-target="#infoPopUp" id="', val ,'" class="tooltip-test" onClick="gene_click(this.id)" title="', paste0(val, " gene info"), '">', val, '</a>'))
   sprintf(paste0('<a href="https://www.genecards.org/cgi-bin/carddisp.pl?gene=', val ,'" target="_blank" class="tooltip-test" onClick="gene_click(this.id)" title="', val, '">', val, '</a>'))
   
 }
 
 # Create links in datatables for GSEA info from MSIGDB
 createGSEAInfoLink <- function(val, valTitle) {
-  print(val)
   sprintf(paste0('<a href="http://software.broadinstitute.org/gsea/msigdb/cards/', val,'" id="', val ,'" target="_blank" class="tooltip-test" onClick="gsea_click(this.id)" title="', val, '">', valTitle, '</a>'))
 }
 
