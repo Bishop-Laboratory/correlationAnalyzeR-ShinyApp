@@ -13,6 +13,7 @@ load("data/geneInfo/MM_basicGeneInfo.RData")
 load("data/humanTissueOptions.RData")
 load("data/mouseTissueOptions.RData")
 load("data/symbol_suggestions.RData")
+load("data/TERM2GENE_Objects.RData")
 humanGeneOptions <- symbolsFinal$alias_symbol[which(symbolsFinal$species == "hsapiens")]
 mouseGeneOptions <- symbolsFinal$alias_symbol[which(symbolsFinal$species == "mmusculus")]
 
@@ -22,8 +23,11 @@ GlobalData <- list("HS_basicGeneInfo" = HS_basicGeneInfo,
                    'humanGeneOptions' = humanGeneOptions,
                    'mouseGeneOptions' = mouseGeneOptions,
                    'humanTissueOptions' = humanTissueOptions,
-                   'mouseTissueOptions' = mouseTissueOptions
-               )
+                   'mouseTissueOptions' = mouseTissueOptions,
+                   'hsapiens_complex_TERM2GENE' = hsapiens_complex_TERM2GENE,
+                   'hsapiens_simple_TERM2GENE' = hsapiens_simple_TERM2GENE,
+                   'mmusculus_complex_TERM2GENE' = mmusculus_complex_TERM2GENE,
+                   'mmusculus_simple_TERM2GENE' = mmusculus_simple_TERM2GENE)
 
 ui <- tagList(
   tags$head(
@@ -186,7 +190,8 @@ server <- function(input, output, session) {
     # Pass analyses to plotting modules
     callModule(module = singleModePlots,
                id = "singleModePlots",
-               dataTables = dataList, 
+               dataTables = dataList,
+               GlobalData = GlobalData,
                parent_session = session)
     callModule(module = geneVsGeneModePlots,
                id = "geneVsGeneModePlots",

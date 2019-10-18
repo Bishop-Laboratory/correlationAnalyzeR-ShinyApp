@@ -33,4 +33,20 @@ for (i in 1:length(tissues)) {
 save(humanTissueOptions, file = "data/humanTissueOptions.RData")
 save(mouseTissueOptions, file = "data/mouseTissueOptions.RData")
 
+# Make GSEA objects
+hsapiens_simple_TERM2GENE <- correlationAnalyzeR::getTERM2GENE(GSEA_Type = "simple",
+                                                               Species = "hsapiens")
+mmusculus_simple_TERM2GENE <- correlationAnalyzeR::getTERM2GENE(GSEA_Type = "simple",
+                                                               Species = "mmusculus")
+hsapiens_complex_TERM2GENE <- correlationAnalyzeR::getTERM2GENE(GSEA_Type = "complex",
+                                                               Species = "hsapiens")
+mmusculus_complex_TERM2GENE <- correlationAnalyzeR::getTERM2GENE(GSEA_Type = "complex",
+                                                               Species = "mmusculus")
+save(hsapiens_simple_TERM2GENE, mmusculus_simple_TERM2GENE, 
+     hsapiens_complex_TERM2GENE, mmusculus_complex_TERM2GENE,
+     file = "data/TERM2GENE_Objects.RData")
+
+
+
+
 

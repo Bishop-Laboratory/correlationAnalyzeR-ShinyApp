@@ -44,7 +44,7 @@ symbolConverter <- function(symbolVec, species) {
   aliasSymbol <- DBI::dbGetQuery(dbCon, sqlQuery)
   aliasSymbol <- as.data.frame(aliasSymbol)
   avgenes <- correlationAnalyzeR::getAvailableGenes(Species = species)
-  aliasSymbol <- aliasSymbol[which(aliasSymbol$symbol %in% avgenes$geneName),]
+  aliasSymbol <- aliasSymbol[which(aliasSymbol$symbol %in% avgenes),]
   
   unresolvableGenes <- c() # Cannot find any gene or alias matching this input
   confusedGenes <- list() # Input was an alias for which two valid gene symbols exists e.g. NRF2

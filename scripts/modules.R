@@ -117,9 +117,7 @@ sampleTypeInput <- function(input, output, session,
   sampleType <- reactive({input$sampleType})
   return(sampleType)
 }
-
-
-
+# Input function for single genes
 singleGeneInputUI <- function(id, label) {
   ns <- NS(id)
   popify(
@@ -133,9 +131,6 @@ singleGeneInputUI <- function(id, label) {
                      "you type.")
   )
 }
-
-
-
 
 singleGeneInput <- function(input, output, session, 
                             parent_session,
@@ -185,7 +180,7 @@ multiGeneInput <- function(input, output, session) {
   secondaryGenes <- reactive({input$secondaryGenes})
   return(secondaryGenes)
 }
-# Downloads
+# Downloads module
 downloadDataUI <- function(id) {
   ns <- NS(id)
   uiOutput(ns("downloadBox"))
@@ -252,9 +247,7 @@ downloadData <- function(input, output, session,
   })
 }
 
-
-## Single-Mode modules ##
-# Analysis
+## Single-Mode analysis ##
 singleModeAnalysisUI <- function(id) {
   ns <- NS(id)
   tagList(
@@ -372,8 +365,9 @@ singleModeAnalysis <- function(input, output, session,
     # # Bug testing
     # primaryGene <- "BRCA1"
     # species <- "Human"
-    # sampleType <- "Normal_Tissues"
+    # sampleType <- "normal"
     # gseaType <- "Simple"
+    # tissueType <- "all"
     # pval <- .05
     # GlobalData <- GlobalData
     
@@ -401,13 +395,9 @@ singleModeAnalysis <- function(input, output, session,
                                         primaryGene, " ... "))
       if (input$species == "Human") {
         whichCompareGroups <- input$crossComparisonModeTypeHuman
-        print("Human cross")
       } else {
         whichCompareGroups <- input$crossComparisonModeTypeMouse
-        print("mouse cross")
       }
-      print("which compare")
-      print(whichCompareGroups)
       
       resList <- correlationAnalyzeR::analyzeSingleGenes(
         Species = cleanRes$selectedSpecies,
@@ -711,18 +701,23 @@ singleModePlots <- function(input, output, session,
               )
             )
           })
+          if (species == "Human") {
+            speciesScien <- "hsapiens"
+          } else {
+            speciesScien <- "mmusculus"
+          }
           
           if (gseaType == "Simple") {
             if (species == "Human") {
-              TERM2GENE <- correlationAnalyzeR::hsapiens_simple_TERM2GENE
+              TERM2GENE <- GlobalData$hsapiens_simple_TERM2GENE
             } else {
-              TERM2GENE <- correlationAnalyzeR::mmusculus_simple_TERM2GENE
+              TERM2GENE <- GlobalData$mmusculus_simple_TERM2GENE
             }
           } else {
             if (species == "Human") {
-              TERM2GENE <- correlationAnalyzeR::hsapiens_complex_TERM2GENE
+              TERM2GENE <- GlobalData$hsapiens_complex_TERM2GENE
             } else {
-              TERM2GENE <- correlationAnalyzeR::mmusculus_complex_TERM2GENE
+              TERM2GENE <- GlobalData$mmusculus_complex_TERM2GENE
             }
           }
           ranks <- correlationData[,4]
@@ -742,16 +737,18 @@ singleModePlots <- function(input, output, session,
                           ". corGSEA p value cutoff was raised to accommodate.")
             shiny::showNotification(ui = msg, type = "warning")
           }
-          downloadsList[['gseaData']] <- list("content" = eres,
+          eresRaw <- eres
+          downloadsList[['gseaData']] <- list("content" = eresRaw,
                                               "file" = ".tsv",
                                               "uiName" = paste0(uiName, 
                                                                 " corGSEA data"))
-          eres <- eres[,c(2, 5, 6, 7)]
-          eres <- eres[which(abs(eres[,2]) > 2),]
-          eres <- eres[order(eres[,2], decreasing = T),]
-          eres[,c(2,3,4)] <- apply(eres[,c(2,3,4)], 1:2, round, digits = 7)
-          eres <- eres[order(eres[,3], decreasing = F),]
+          eres <- eres[which(abs(eres[,5]) > 2),]
+          eres <- eres[order(eres[,5], decreasing = T),]
           
+          eres[,c(5,6,7)] <- apply(eres[,c(5,6,7)], 1:2, round, digits = 7)
+          eres <- eres[order(eres[,6], decreasing = F),]
+          eresCor <- eres
+          eres <- eres[,c(2, 5, 6, 7)]
           eresTitles <- eres$Description
           eresTitles <- correlationAnalyzeR::fixStrings(eresTitles)
           eresTitles[which(nchar(eresTitles) > 45)] <- paste0(substr(eresTitles[which(nchar(eresTitles) > 45)], 1, 41), "...")
@@ -769,6 +766,25 @@ singleModePlots <- function(input, output, session,
                       colnames = c("Pathway", "Enrichment (normalized)",
                                    "Pval", "Padj"))
           }, escape = F)
+          GSEA_correlation_vals <- reactive({
+            s <- input$gseaData_rows_selected
+            if (length(s)) {
+              id <- eresCor[s,1]
+              titleID <- eresTitles[s]
+            } else{
+              id <- eresCor[1,1]
+              titleID <- eresTitles[1]
+            }
+            genes <- unlist(strsplit(eresCor$core_enrichment[
+              which(eresCor$ID == id)], split = "/"))
+            corrDFNow <- correlationData[which(correlationData$geneName %in% genes),]
+            corrDFNow2 <- cbind(rep(id, length(corrDFNow$geneName)), corrDFNow)
+            colnames(corrDFNow2)[1] <- "geneset_ID"
+            colnames(corrDFNow2)[5] <- paste0(colnames(corrDFNow2)[5], "_correlation_value")
+            list("content" = corrDFNow2,
+                 "uiName" = paste0(titleID, " correlation data"),
+                 "file" = ".tsv")
+          })
           plotGSEA <- reactive({
             s <- input$gseaData_rows_selected
             if (length(s)) {
@@ -800,9 +816,18 @@ singleModePlots <- function(input, output, session,
         }
         
         primaryName <- primaryGene
+        observe({
+          if (gseaType != "None") {
+            s <- input$gseaData_rows_selected
+            downloadsList[["GSEA_correlation_vals"]] <- GSEA_correlation_vals()
+            callModule(module = downloadData, id = "singleModeDownloads", 
+                       primaryName = uiName, downloadsListReact = downloadsList)
+          } else {
+            callModule(module = downloadData, id = "singleModeDownloads", 
+                       primaryName = uiName, downloadsListReact = downloadsList)
+          }
+        })
         
-        callModule(module = downloadData, id = "singleModeDownloads", 
-                   primaryName = uiName, downloadsListReact = downloadsList)
       }
     })
   })
@@ -1194,7 +1219,7 @@ geneVsGeneModePlots <- function(input, output, session,
       })
       
       
-      compResTPM <- pairedRes[["singleGeneCrossCompareResults"]]
+      compResTPM <- pairedRes[["crossCompareTPM"]]
       if (mode == "cross_geneVsGene") {
         output$comparedPathsUI <- renderUI({
           ns <- session$ns
@@ -1219,29 +1244,22 @@ geneVsGeneModePlots <- function(input, output, session,
                             plotOutput(ns("geneTPMBoxplot2"))))
           )
         })
-        geneTPMBoxplot1 <- compResTPM[[1]][["TPM_boxPlot"]]
-        geneTPMBoxplotData1 <- compResTPM[[1]][["TPM_DF"]]
-        downloadsListTPM1 <- list("content" = geneTPMBoxplotData1,
-                                  "uiName" = paste0(geneOne,
-                                                    " normalized expression (TPM)"),
+        geneTPMBoxplot1 <- compResTPM[["TPM_boxPlotOne"]]
+        geneTPMBoxplot2 <- compResTPM[["TPM_boxPlotTwo"]]
+        geneTPMData <- compResTPM[["TPM_DF"]]
+        downloadsListTPM <- list("content" = geneTPMData,
+                                  "uiName" = "Normalized expression (TPM)",
                                   "file" = ".tsv")
         
         output$geneTPMBoxplot1 <- renderPlot(height = 500, {
           geneTPMBoxplot1
         })
-        geneTPMBoxplot2 <- compResTPM[[2]][["TPM_boxPlot"]]
-        geneTPMBoxplotData2 <- compResTPM[[2]][["TPM_DF"]]
-        downloadsListTPM2 <- list("content" = geneTPMBoxplotData2,
-                                  "uiName" = paste0(geneTwo,
-                                                    " normalized expression (TPM)"),
-                                  "file" = ".tsv")
         
         output$geneTPMBoxplot2 <- renderPlot(height = 500, {
           geneTPMBoxplot2
         })
         downloadsList <- reactiveValues("correlationData" = downloadDataPairsCor,
-                                        "geneOneTPM" = downloadsListTPM1,
-                                        "geneTwoTPM" = downloadsListTPM2)
+                                        "TPMData" = downloadsListTPM)
       } else {
         output$comparedPathsUI <- renderUI({
           ns <- session$ns
@@ -1262,14 +1280,13 @@ geneVsGeneModePlots <- function(input, output, session,
                             plotOutput(ns("geneTPMBoxplot"))))
           )
         })
-        geneTPMBoxplot <- compResTPM[[1]][["TPM_boxPlot"]]
+        geneTPMBoxplot <- compResTPM[["TPM_boxPlot"]]
         output$geneTPMBoxplot <- renderPlot(height = 500, {
           geneTPMBoxplot
         })
-        geneTPMBoxplotData <- compResTPM[[1]][["TPM_DF"]]
+        geneTPMBoxplotData <- compResTPM[["TPM_DF"]]
         downloadsListTPM <- list("content" = geneTPMBoxplotData,
-                                  "uiName" = paste0(uiName,
-                                                    " normalized expression (TPM)"),
+                                  "uiName" = paste0("Normalized expression (TPM)"),
                                   "file" = ".tsv")
         
         downloadsList <- reactiveValues("correlationData" = downloadDataPairsCor,
@@ -1283,6 +1300,8 @@ geneVsGeneModePlots <- function(input, output, session,
       
     } else {
       correlations <- pairedRes[["processedCorrelationsFrame"]]
+      TPMData <- pairedRes[["compared"]][["TPM_Data"]]
+      TPMBoxPlot <- pairedRes[["compared"]][["TPM_boxPlot"]]
       corrPlot <- pairedRes[["compared"]][["correlationPlot"]]
       heatGenes <- pairedRes[["compared"]][["correlationVarianceHeatmap"]]
       heatPaths <- pairedRes[["compared"]][["correlatedPathwaysHeatmap"]]
@@ -1366,6 +1385,11 @@ geneVsGeneModePlots <- function(input, output, session,
       downloadDataPairsPath <- list(
         "content" = correlatedPathwaysDF,
         "uiName" = "Pathway correlation values",
+        "file" = ".tsv"
+      )
+      downloadDataTPM <- list(
+        "content" = TPMData,
+        "uiName" = "Gene expression across samples",
         "file" = ".tsv"
       )
       
@@ -1458,35 +1482,42 @@ geneVsGeneModePlots <- function(input, output, session,
         )
         DT_out
       }, escape = F)
-
+      output$geneTPMBoxplot <- renderPlot({
+        TPMBoxPlot
+      })
       output$comparedPathsUI <- renderUI({
         ns <- session$ns
         tagList(
           hr(),
           h3("Compared corGSEA results"),
           hr(),
-          fluidRow(
-            
+          fluidRow(style = "height:400px;",
             column(width = 8, offset = 2, #title = "Correlation Histogram",
                    plotOutput(ns("heatPaths"))
-                   
             )
           ),
           br(),
           br(),
-          fluidRow(
+          fluidRow(style = "height:300px;",
             column(width =  12, #offset = 3, #title = "Correlation Data",
                    DT::dataTableOutput(ns("correlatedPathwaysDF"))
             )
-          )
+          ),
+          br(),
+          hr(),
+          h3("Compared gene expression"),
+          hr(),
+          fluidRow(style = "height:400px;",
+                   column(width = 10, offset = 1,
+                          plotOutput(ns("geneTPMBoxplot"))))
           
         )
       })
       
       
       downloadsList <- reactiveValues("correlationData" = downloadDataPairsCor,
-                                      "pathwayData" = downloadDataPairsPath
-                                      )
+                                      "pathwayData" = downloadDataPairsPath,
+                                      "expressionData" = downloadDataTPM)
       
       callModule(module = downloadData, id = "geneVsGeneModeDownloads", 
                  primaryName = uiName, downloadsListReact = downloadsList)
@@ -1496,7 +1527,6 @@ geneVsGeneModePlots <- function(input, output, session,
     
   })
 }
-
 
 ## geneVsGeneList-mode analysis ##
 geneVsGeneListModeAnalysisUI <- function(id) {
@@ -1840,7 +1870,7 @@ geneVsGeneListModePlots <- function(input, output, session,
   })
 }
 
-## Topology-Mode modules ##
+## Topology-Mode analysis ##
 # Analysis
 topologyModeAnalysisUI <- function(id) {
   ns <- NS(id)
@@ -2496,7 +2526,5 @@ topologyModePlots <- function(input, output, session,
     
   })
 }
-
-
 
 
