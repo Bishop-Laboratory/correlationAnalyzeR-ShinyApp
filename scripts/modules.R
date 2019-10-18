@@ -274,11 +274,10 @@ singleModeAnalysisUI <- function(id) {
                        ' Choose "Complex" to consider all MSIGDB genesets, or choose "None" ',
                        'to skip corGSEA entirely.')
     ), 
-    popify(title = "Cross comparison mode", 
+    popify(title = "Group mode", 
            placement = "right", options=list(container="body"),
       switchInput(ns("crossComparisonMode"), value = FALSE, label = "Group mode"),
-      content = paste0('Cross comparison mode is a new analysis style for ',
-                       'viewing correlations for a gene across tissue/disease groups.',
+      content = paste0('Group comparison shows correlations across multiple groups.',
                        ' Select whether to examine differences across "Normal", "Cancer", ',
                        'or "All" tissue groups. Only "Normal" is available for mouse due to ',
                        'concerns regarding sample number for mouse cancer conditions.')
@@ -353,6 +352,8 @@ singleModeAnalysis <- function(input, output, session,
   # Observe the value of 'do' and run the analysis if it's above 1
   data <- eventReactive(eventExpr = input$do, {
     primaryGene <- primaryGene()
+    shiny::validate(need(primaryGene != "Loading ...", 
+                         label = "Please select a gene."))
     sampleType <- sampleType()
     sampleType <- tolower(sampleType)
     tissueType <- tissueType()
@@ -391,7 +392,7 @@ singleModeAnalysis <- function(input, output, session,
     
     
     if (input$crossComparisonMode) {
-      progress$inc(.2, message = paste0("Starting cross comparisons for ", 
+      progress$inc(.2, message = paste0("Starting group comparisons for ", 
                                         primaryGene, " ... "))
       if (input$species == "Human") {
         whichCompareGroups <- input$crossComparisonModeTypeHuman
@@ -517,7 +518,8 @@ singleModePlots <- function(input, output, session,
                                                          " normalized expression (TPM)"),
                                        "file" = ".tsv")
         output$heatMap <- renderPlotly({
-          progress$inc(.3, message = "Rendering interactive heatmap ... ")
+          progress$inc(.2, message = "Rendering interactive heatmap ... ")
+          progress$inc(.1, detail = "Based on list size, this may take ~1-2 minutes.")
           
           plt_dat <- heatMapDat
           # Center the scale
@@ -578,7 +580,7 @@ singleModePlots <- function(input, output, session,
             hr(),
             fluidRow( style = "height:500px;",
               column(width = 12, #title = "Correlation Histogram",
-                     plotlyOutput(ns("heatMap")))
+                     withSpinner(plotlyOutput(ns("heatMap"))))
             )
           )
         })
@@ -871,11 +873,10 @@ geneVsGeneModeAnalysisUI <- function(id) {
                        ' (MSIGDB genesets "H", "C2", "C5", and "C6")',
                        ' Choose "Complex" to consider all MSIGDB genesets.')
     ),
-    popify(title = "Cross comparison mode", 
+    popify(title = "Group mode", 
            placement = "right", options=list(container="body"),
            switchInput(ns("crossComparisonMode"), value = FALSE, label = "Group mode"),
-           content = paste0('Cross comparison mode is a new analysis style for ',
-                            'viewing correlations for a gene across tissue/disease groups.',
+           content = paste0('Group comparison shows correlations across multiple groups.',
                             ' Select whether to examine differences across "Normal", "Cancer", ',
                             'or "All" tissue groups.')
     ),
@@ -963,12 +964,16 @@ geneVsGeneModeAnalysis <- function(input, output, session,
   data <- reactiveVal()
   data <- eventReactive(eventExpr = input$do, {
     geneOne <- geneOne()
+    shiny::validate(need(geneOne != "Loading ...", 
+                         label = "Please select a gene one."))
     tissueTypeOne <- tissueTypeOne()
     tissueTypeOne <- tolower(tissueTypeOne)
     tissueTypeOne <- gsub(tissueTypeOne, pattern = " ",replacement = "0")
     sampleTypeOne <- sampleTypeOne()
     sampleTypeOne <- tolower(sampleTypeOne)
     geneTwo <- geneTwo()
+    shiny::validate(need(geneTwo != "Loading ...", 
+                         label = "Please select a gene two"))
     tissueTypeTwo <- tissueTypeTwo()
     tissueTypeTwo <- tolower(tissueTypeTwo)
     tissueTypeTwo <- gsub(tissueTypeTwo, pattern = " ",replacement = "0")
@@ -992,7 +997,7 @@ geneVsGeneModeAnalysis <- function(input, output, session,
       showNotification(paste0("Please select two different genes, tissue types,",
                               " and/or disease states to compare.",
                               " Alternatively, select 'Group mode'."),
-                       type = "error", duration = 12)
+                       type = "error", duration = 8)
     }
     
     shiny::validate(
@@ -1588,6 +1593,8 @@ geneVsGeneListModeAnalysis <- function(input, output, session,
   data <- reactiveVal()
   data <- eventReactive(eventExpr = input$do, {
     primaryGene <- primaryGene()
+    shiny::validate(need(primaryGene != "Loading ...", 
+                         label = "Please select a primary gene."))
     secondaryGenes <- secondaryGenes()
     species <- input$species
     sampleType <- sampleType()
@@ -1936,6 +1943,14 @@ topologyModeAnalysis <- function(input, output, session,
     # Clean secondaryGenes input
     secondaryGenes <- strsplit(secondaryGenes, split = "\n")
     secondaryGenes <- unlist(secondaryGenes, use.names = F)
+    if (length(secondaryGenes) > 500) {
+      msg <- paste0("Topology mode cannot process more than 500 genes. If you would ",
+                    "like to test more, please use the R-package.")
+      showNotification(ui = msg, 
+                       duration = 8, type = 'error')
+    }
+    shiny::validate(need(length(secondaryGenes) < 501, 
+                         label = "Use may not enter > 500 genes"))
     # # Bug testing
     # species <- "Human"
     # sampleType <- "Normal_Tissues"
@@ -1958,7 +1973,8 @@ topologyModeAnalysis <- function(input, output, session,
                             GlobalData = GlobalData,
                             session = session)
     # Return plots + correlation data
-    progress$inc(.2, message = "Analyzing geneset topology ... ")
+    progress$inc(.1, message = "Analyzing geneset topology ... ")
+    progress$inc(.1, detail = "Based on list size, this may take ~1-2 minutes.")
     # Warn if using less than 10 genes for pathway enrichment
     pass <- 1
     if (! cleanRes$geneSetInputType & length(cleanRes$secondaryGenes) < 3) {
@@ -2019,7 +2035,7 @@ topologyModePlotsUI <- function(id) {
           fluidRow(
             br(),
             column(width = 6, 
-                plotlyOutput(ns("PCAPlot"), width = "600px")
+                   plotlyOutput(ns("PCAPlot"), width = "600px")
             ),
             column(width =  6, 
                 DT::dataTableOutput(ns("PCADT"), width = "600px")
@@ -2031,7 +2047,7 @@ topologyModePlotsUI <- function(id) {
           value = "varGenes",
           fluidRow(
             br(),
-            plotlyOutput(ns("varHeat"), width = "1200px")
+            withSpinner(plotlyOutput(ns("varHeat"), width = "1200px"))
             
           ),
           fluidRow(
@@ -2044,7 +2060,7 @@ topologyModePlotsUI <- function(id) {
           fluidRow(
             br(),
             column(width = 8, offset = 2,
-                   DT::dataTableOutput(ns("varDT"))
+                   withSpinner(DT::dataTableOutput(ns("varDT")))
             )
           )
         ),
