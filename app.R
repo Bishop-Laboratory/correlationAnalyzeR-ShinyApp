@@ -2,34 +2,18 @@ library(shiny)
 library(shinythemes)
 library(shinyjs)
 # Helper functions for shiny apps
-require(RMySQL)
-require(DBI)
+library(pryr)
+library(heatmaply)
+library(correlationAnalyzeR)
+library(plotly)
+library(DT)
+library(shinyWidgets)
 library(shinyBS)
 library(shinycssloaders)
 options(spinner.color="#337AB7")
 source("scripts/modules.R")
 source("scripts/helpers.R")
-# # Load data for the global environment
-load("data/geneInfo/HS_basicGeneInfo.RData")
-load("data/geneInfo/MM_basicGeneInfo.RData")
-load("data/humanTissueOptions.RData")
-load("data/mouseTissueOptions.RData")
-load("data/symbol_suggestions.RData")
-load("data/TERM2GENE_Objects.RData")
-humanGeneOptions <- symbolsFinal$alias_symbol[which(symbolsFinal$species == "hsapiens")]
-mouseGeneOptions <- symbolsFinal$alias_symbol[which(symbolsFinal$species == "mmusculus")]
-
-# Create global data object
-GlobalData <- list("HS_basicGeneInfo" = HS_basicGeneInfo,
-                   'MM_basicGeneInfo' = MM_basicGeneInfo,
-                   'humanGeneOptions' = humanGeneOptions,
-                   'mouseGeneOptions' = mouseGeneOptions,
-                   'humanTissueOptions' = humanTissueOptions,
-                   'mouseTissueOptions' = mouseTissueOptions,
-                   'hsapiens_complex_TERM2GENE' = hsapiens_complex_TERM2GENE,
-                   'hsapiens_simple_TERM2GENE' = hsapiens_simple_TERM2GENE,
-                   'mmusculus_complex_TERM2GENE' = mmusculus_complex_TERM2GENE,
-                   'mmusculus_simple_TERM2GENE' = mmusculus_simple_TERM2GENE)
+load("data/GlobalData.RData")
 
 ui <- tagList(
   tags$head(
@@ -152,7 +136,6 @@ ui <- tagList(
   ),
   br(),
   br()
-  # tags$div(id="footerTag", p("footer"))
 )
 
 
@@ -166,51 +149,49 @@ server <- function(input, output, session) {
     unlink(tmp, force = T, recursive = T)
   })
   
-  # Initialize module variables
-  dataList <- reactiveValues(singleModeData = NULL, 
-                             geneVsGeneListModeData = NULL, 
-                             topologyModeData = NULL)
-  observe({
-    # Pull out all available analyses
-    dataList[["singleModeData"]] <- callModule(module = singleModeAnalysis, 
-                                               id = "singleModeAnalysis", 
-                                               parent_session = parent_session, 
-                                               GlobalData = GlobalData)
-    dataList[["geneVsGeneModeData"]] <- callModule(module = geneVsGeneModeAnalysis, 
-                                                   id = "geneVsGeneModeAnalysis", 
+
+  singleModeData <- reactiveValues(singleModeData = NULL)
+  geneVsGeneModeData <- reactiveValues(geneVsGeneModeData = NULL)
+  geneVsGeneListModeData <- reactiveValues(geneVsGeneListModeData = NULL)
+  topologyModeData <- reactiveValues(topologyModeData = NULL)
+  
+  
+  singleModeData[["singleModeData"]] <- callModule(module = singleModeAnalysis, 
+                                                   id = "singleModeAnalysis", 
                                                    parent_session = parent_session, 
                                                    GlobalData = GlobalData)
-    dataList[["geneVsGeneListModeData"]] <- callModule(module = geneVsGeneListModeAnalysis, 
-                                               id = "geneVsGeneListModeAnalysis", 
-                                               parent_session = parent_session, 
-                                               GlobalData = GlobalData)
-    dataList[["topologyModeData"]] <- callModule(module = topologyModeAnalysis, 
-                                               id = "topologyModeAnalysis", 
-                                               parent_session = parent_session, 
-                                               GlobalData = GlobalData)
-    
-    # Pass analyses to plotting modules
-    callModule(module = singleModePlots,
-               id = "singleModePlots",
-               dataTables = dataList,
-               GlobalData = GlobalData,
-               parent_session = session)
-    callModule(module = geneVsGeneModePlots,
-               id = "geneVsGeneModePlots",
-               dataTables = dataList,
-               parent_session = session,
-               GlobalData = GlobalData)
-    callModule(module = geneVsGeneListModePlots,
-               id = "geneVsGeneListModePlots",
-               dataTables = dataList,
-               parent_session = session,
-               GlobalData = GlobalData)
-    callModule(module = topologyModePlots,
-               id = "topologyModePlots",
-               dataTables = dataList,
-               parent_session = session,
-               GlobalData = GlobalData)
-  })
+  geneVsGeneModeData[["geneVsGeneModeData"]] <- callModule(module = geneVsGeneModeAnalysis, 
+                                                           id = "geneVsGeneModeAnalysis", 
+                                                           parent_session = parent_session, 
+                                                           GlobalData = GlobalData)
+  geneVsGeneListModeData[["geneVsGeneListModeData"]] <- callModule(module = geneVsGeneListModeAnalysis, 
+                                                                   id = "geneVsGeneListModeAnalysis", 
+                                                                   parent_session = parent_session, 
+                                                                   GlobalData = GlobalData)
+  topologyModeData[["topologyModeData"]] <- callModule(module = topologyModeAnalysis, 
+                                                       id = "topologyModeAnalysis", 
+                                                       parent_session = parent_session, 
+                                                       GlobalData = GlobalData)
+  callModule(module = singleModePlots,
+             id = "singleModePlots",
+             dataTables = singleModeData,
+             parent_session = session)
+  callModule(module = geneVsGeneModePlots,
+             id = "geneVsGeneModePlots",
+             dataTables = geneVsGeneModeData,
+             parent_session = session,
+             GlobalData = GlobalData)
+  callModule(module = geneVsGeneListModePlots,
+             id = "geneVsGeneListModePlots",
+             dataTables = geneVsGeneListModeData,
+             parent_session = session,
+             GlobalData = GlobalData)
+  callModule(module = topologyModePlots,
+             id = "topologyModePlots",
+             dataTables = topologyModeData,
+             parent_session = session,
+             GlobalData = GlobalData)
+  
 }
 
 shinyApp(ui, server)

@@ -46,7 +46,29 @@ save(hsapiens_simple_TERM2GENE, mmusculus_simple_TERM2GENE,
      hsapiens_complex_TERM2GENE, mmusculus_complex_TERM2GENE,
      file = "data/TERM2GENE_Objects.RData")
 
+# # Load data for the global environment
+# load("data/geneInfo/HS_basicGeneInfo.RData")
+# load("data/geneInfo/MM_basicGeneInfo.RData")
+# load("data/humanTissueOptions.RData")
+# load("data/mouseTissueOptions.RData")
+# load("data/mouseGeneOptions.RData")
+# load("data/humanGeneOptions.RData")
+# load("data/symbol_suggestions.RData")
+# humanGeneOptions <- symbolsFinal$alias_symbol[which(symbolsFinal$species == "hsapiens")]
+# mouseGeneOptions <- symbolsFinal$alias_symbol[which(symbolsFinal$species == "mmusculus")]
+# humanGeneOptions <- humanGeneOptions[order(humanGeneOptions)]
+# mouseGeneOptions <- mouseGeneOptions[order(mouseGeneOptions)]
+# save(humanGeneOptions, file = "data/humanGeneOptions.RData")
+# save(mouseGeneOptions, file = "data/mouseGeneOptions.RData")
 
+# # Create global data object
+# GlobalData <- list("HS_basicGeneInfo" = HS_basicGeneInfo,
+#                    'MM_basicGeneInfo' = MM_basicGeneInfo,
+#                    'humanGeneOptions' = humanGeneOptions,
+#                    'mouseGeneOptions' = mouseGeneOptions,
+#                    'humanTissueOptions' = humanTissueOptions,
+#                    'mouseTissueOptions' = mouseTissueOptions)
+# save(GlobalData, file = "data/GlobalData.RData")
 
 
 

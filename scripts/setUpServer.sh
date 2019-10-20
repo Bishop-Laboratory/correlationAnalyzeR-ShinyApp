@@ -18,7 +18,7 @@ apt-get -y install libmariadbclient-dev
 apt-get -y install libssl-dev
 apt-get -y install libcurl4-openssl-dev
 apt-get -y install libxml2-dev
-R -e "install.packages(c('shinyjs','shiny','shinydashboard','shinythemes','devtools','plotly','heatmaply','ggpubr','ggplot2','Rtsne','ggrepel','ggplot2', 'DT', 'gplots', 'data.table', 'BiocManager', 'DBI', 'RMySQL','pheatmap','SuperExactTest'), repos = 'http://cran.rstudio.com/')"
+R -e "install.packages(c('shinyjs','shiny','shinydashboard','shinythemes','devtools','shinyWidgets','plotly','heatmaply','ggpubr','ggplot2','Rtsne','ggrepel','ggplot2', 'DT', 'gplots', 'data.table', 'BiocManager', 'DBI', 'RMySQL','pheatmap','SuperExactTest'), repos = 'http://cran.rstudio.com/')"
 R -e "BiocManager::install(c('org.Mm.eg.db', 'org.Hs.eg.db','clusterProfiler','limma', 'preprocessCore'))"
 R -e "install.packages('metaMA', repos = 'http://cran.rstudio.com/')"
 R -e "devtools::install_github('nik01010/dashboardthemes')"
