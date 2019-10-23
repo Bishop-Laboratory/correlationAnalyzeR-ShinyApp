@@ -24,7 +24,7 @@ createGSEAInfoLink <- function(val, valTitle) {
 }
 
 # Function to convert a vector of old gene symbols to new ones
-symbolConverter <- function(symbolVec, species) {
+symbolConverter <- function(symbolVec, species, pool) {
   # Provide a vector of gene symbols to check and convert
   
   # # Bug testing
@@ -43,7 +43,7 @@ symbolConverter <- function(symbolVec, species) {
   sqlQuery <- 'SELECT * FROM alias, gene_info WHERE alias._id == gene_info._id;'
   aliasSymbol <- DBI::dbGetQuery(dbCon, sqlQuery)
   aliasSymbol <- as.data.frame(aliasSymbol)
-  avgenes <- correlationAnalyzeR::getAvailableGenes(Species = species)
+  avgenes <- correlationAnalyzeR::getAvailableGenes(Species = species, pool = pool)
   aliasSymbol <- aliasSymbol[which(aliasSymbol$symbol %in% avgenes),]
   
   unresolvableGenes <- c() # Cannot find any gene or alias matching this input
@@ -107,7 +107,7 @@ createGeneGuide <- function() {
   sqlQuery <- 'SELECT * FROM alias, gene_info WHERE alias._id == gene_info._id;'
   aliasSymbol <- DBI::dbGetQuery(dbCon, sqlQuery)
   aliasSymbol <- as.data.frame(aliasSymbol)
-  mmgenes <- correlationAnalyzeR::getAvailableGenes(Species = 'mmusculus')
+  mmgenes <- correlationAnalyzeR::getAvailableGenes(Species = 'mmusculus', pool = pool)
   aliasSymbol <- aliasSymbol[which(aliasSymbol$symbol %in% mmgenes$geneName),]
   mouseSymbols <- aliasSymbol[,c(2, 5, 4)]
   toAdd <- data.frame(alias_symbol = mouseSymbols$symbol, 
@@ -134,7 +134,8 @@ cleanInputs <- function(primaryGene = NULL,
                         sampleType,
                         tissueType,
                         GlobalData,
-                        session) {
+                        session,
+                        pool) {
   # Get GlobalData inputs
   HS_basicGeneInfo <- GlobalData$HS_basicGeneInfo
   MM_basicGeneInfo <- GlobalData$MM_basicGeneInfo
@@ -166,7 +167,8 @@ cleanInputs <- function(primaryGene = NULL,
   # Validate primary gene
   if (! is.null(primaryGene)){
     # Handle bad gene name here
-    res <- symbolConverter(symbolVec = primaryGene, species = selectedSpecies)
+    res <- symbolConverter(symbolVec = primaryGene,
+                           species = selectedSpecies, pool = pool)
     unresolvableGenes <- res$unresolvableGenes
     if (length(res$resGenes)) {
       primaryGene <- res$resGenes[1]
@@ -197,7 +199,8 @@ cleanInputs <- function(primaryGene = NULL,
       secondaryGenes <- genesetInputs
     } else {
       resList[['geneSetInputType']] <- F
-      res <- symbolConverter(symbolVec = secondaryGenes, species = selectedSpecies)
+      res <- symbolConverter(symbolVec = secondaryGenes, pool = pool,
+                             species = selectedSpecies)
       secondaryGenes <- NULL
       
       unresolvableGenes <- res$unresolvableGenes

@@ -5,12 +5,16 @@ library(shiny)
 options(shiny.reactlog=TRUE)
 getwd()
 
-runApp(launch.browser = T)
+runApp(launch.browser = T, display.mode = "normal")
+# runApp( display.mode = "showcase")
 
-profvis(prof_output = "profFile.html",{
-  runApp(launch.browser = T)
-  
-})
+
+
+
+# profvis(prof_output = "profFile.html",{
+#   runApp(launch.browser = T)
+#   
+# })
 
 
 

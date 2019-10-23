@@ -7,6 +7,7 @@ library(heatmaply)
 library(correlationAnalyzeR)
 library(plotly)
 library(DT)
+library(pool)
 library(shinyWidgets)
 library(shinyBS)
 library(shinycssloaders)
@@ -14,6 +15,22 @@ options(spinner.color="#337AB7")
 source("scripts/modules.R")
 source("scripts/helpers.R")
 load("data/GlobalData.RData")
+
+# Load connections
+pool <- pool::dbPool(
+  drv = RMySQL::MySQL(),
+  user = "public-rds-user", port = 3306,
+  dbname="bishoplabdb",
+  password='public-user-password',
+  host="bishoplabdb.cyss3bq5juml.us-west-2.rds.amazonaws.com"
+)
+print("Pool connected")
+# pool::poolClose(pool)
+# on.exit({
+#   pool::poolClose(pool)
+#   warning("Pool disconnected now!")
+# })
+
 
 ui <- tagList(
   tags$head(
@@ -159,19 +176,25 @@ server <- function(input, output, session) {
   singleModeData[["singleModeData"]] <- callModule(module = singleModeAnalysis, 
                                                    id = "singleModeAnalysis", 
                                                    parent_session = parent_session, 
-                                                   GlobalData = GlobalData)
+                                                   GlobalData = GlobalData,
+                                                   pool = pool)
   geneVsGeneModeData[["geneVsGeneModeData"]] <- callModule(module = geneVsGeneModeAnalysis, 
                                                            id = "geneVsGeneModeAnalysis", 
                                                            parent_session = parent_session, 
-                                                           GlobalData = GlobalData)
+                                                           GlobalData = GlobalData,
+                                                           pool = pool)
   geneVsGeneListModeData[["geneVsGeneListModeData"]] <- callModule(module = geneVsGeneListModeAnalysis, 
                                                                    id = "geneVsGeneListModeAnalysis", 
                                                                    parent_session = parent_session, 
-                                                                   GlobalData = GlobalData)
+                                                                   GlobalData = GlobalData,
+                                                                   pool = pool)
   topologyModeData[["topologyModeData"]] <- callModule(module = topologyModeAnalysis, 
                                                        id = "topologyModeAnalysis", 
                                                        parent_session = parent_session, 
-                                                       GlobalData = GlobalData)
+                                                       GlobalData = GlobalData,
+                                                       pool = pool)
+  
+  
   callModule(module = singleModePlots,
              id = "singleModePlots",
              dataTables = singleModeData,
