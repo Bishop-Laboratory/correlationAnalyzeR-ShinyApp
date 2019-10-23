@@ -448,6 +448,8 @@ singleModeAnalysis <- function(input, output, session,
       data <- merge(x = cleanRes$basicGeneInfo, y = data, by = "geneName")
       data <- data[order(data$Variance, decreasing = T),]
       resList[[1]][["correlations"]] <- data
+      print("End of single mode analysis memory (cross compare): ")
+      print(pryr::mem_used())
       res <- list("correlationData" = resList,
                   "species" = species,
                   "gseaType" = gseaType,
@@ -489,6 +491,8 @@ singleModeAnalysis <- function(input, output, session,
       data <- merge(x = cleanRes$basicGeneInfo, y = data, by = "geneName")
       data <- data[order(data[,4], decreasing = T),]
       resList[["correlations"]] <- data
+      print("End of single mode analysis memory: ")
+      print(pryr::mem_used())
       # Enable the download button
       res <- list("correlationData" = resList,
                   "species" = species,
@@ -500,6 +504,7 @@ singleModeAnalysis <- function(input, output, session,
                   "progress" = progress)
       res
     }
+    
   })
   
   return(data)
@@ -967,9 +972,12 @@ singleModePlots <- function(input, output, session,
     req(downloadsList$ready)
     callModule(module = downloadData, id = "singleModeDownloads", 
                primaryName = fileName(), downloadsListReact = downloadsList)
+    print("End of single mode plots memory: ")
+    print(pryr::mem_used())
     dataTables$singleModeData()$progress$close()
     req((! processed()))
     processed(TRUE)
+    
   })
   
 }
@@ -1165,13 +1173,13 @@ geneVsGeneModeAnalysis <- function(input, output, session,
     # on.exit(progress$close())
     
     # # Bug testing
-    # geneOne <- "BRCA1"
+    # geneOne <- "Atmin"
     # tissueTypeOne <- "all"
     # sampleTypeOne <- "normal"
-    # geneTwo <- "BRCA1"
+    # geneTwo <- "Slc7a2"
     # tissueTypeTwo <- "female0reproductive"
     # sampleTypeTwo <- "normal"
-    # species <- "Human"
+    # species <- "Mouse"
     # gseaType <- "Simple"
     
     cleanResOne <- cleanInputs(primaryGene = geneOne,
@@ -1342,7 +1350,6 @@ geneVsGeneModePlots <- function(input, output, session,
     req(dataTables$geneVsGeneModeData())
     preprocessed(FALSE)
     processed(FALSE)
-    print("BEGINNING PROCESSING!!!!!!!!!!")
     correlations(NULL)
     correlatedPathwaysDF(NULL)
     # corrPlot(NULL)
@@ -1469,7 +1476,6 @@ geneVsGeneModePlots <- function(input, output, session,
   output$correlationsUI <- renderUI({
     req(dataTables$geneVsGeneModeData())
     req(processed())
-    print("rending cor ui")
     ns <- session$ns
     if (groupMode()) {
       req(groupMode())
@@ -1504,7 +1510,6 @@ geneVsGeneModePlots <- function(input, output, session,
   output$comparedPathsUI <- renderUI({
     req(dataTables$geneVsGeneModeData())
     req(processed())
-    print("rendering path ui")
     ns <- session$ns
     
     if (! groupMode()) {
@@ -1535,6 +1540,7 @@ geneVsGeneModePlots <- function(input, output, session,
         
       )
     } else {
+      # req((! groupMode()))
       req(tmpHeatFile())
       if (whichCompareGroups() == "cross_geneVsGene") {
         tagsTPMNow <- tagList(
@@ -1582,6 +1588,7 @@ geneVsGeneModePlots <- function(input, output, session,
   
   # Build UI elements for normal mode
   corrValDFReact <- reactive({
+    req((! groupMode()))
     req(correlations())
     # Setup dataframe to match plotly data
     corrValDF <- correlations()
@@ -1596,6 +1603,7 @@ geneVsGeneModePlots <- function(input, output, session,
     corrValDF
   })
   output$correlationData <- renderDataTable(server = T, {
+    req((! groupMode()))
     req(corrValDFReact())
     corrValDF <- corrValDFReact()
     corrValDF[,c(3:6)] <- apply(corrValDF[,c(3:6)], 2, FUN = signif, digits = 3)
@@ -1618,6 +1626,7 @@ geneVsGeneModePlots <- function(input, output, session,
     DT_out
   }, escape = F)
   corrPlot <- reactive({
+    req((! groupMode()))
     df <- correlations()
     df <- unique(df[,c(4,5)])
     # df <- pairResNow$correlations
@@ -1648,6 +1657,7 @@ geneVsGeneModePlots <- function(input, output, session,
     print(gp)
   })
   output$corrScatter <- renderPlot({
+    req((! groupMode()))
     print(corrPlot())
     
   })
@@ -1658,9 +1668,11 @@ geneVsGeneModePlots <- function(input, output, session,
   })
   
   output$heatPaths <- renderPlot({
+    req((! groupMode()))
     heatPaths()
   })
   output$correlatedPathwaysDF <- renderDataTable(server = T, {
+    req((! groupMode()))
     eres <- correlatedPathwaysDF()
     cols <- colnames(eres)
     cols[1] <- "Pathway"
@@ -1748,7 +1760,8 @@ geneVsGeneModePlots <- function(input, output, session,
     req(downloadsList$ready)
     callModule(module = downloadData, id = "geneVsGeneModeDownloads",
                primaryName = uiName(), downloadsListReact = downloadsList)
-    print("PROCESSED")
+    print("End of gene vs gene plots memory: ")
+    print(pryr::mem_used())
     processed(TRUE)
   })
   
@@ -1854,7 +1867,6 @@ geneVsGeneListModeAnalysis <- function(input, output, session,
     pass <- 1
     
     if (is.null(cleanRes$secondaryGenes)) {
-      print("FAIL")
       showNotification(ui = "No valid secondary genes provided.", 
                        duration = 8, type = 'error')
       pass <- 0
@@ -1929,211 +1941,238 @@ geneVsGeneListModePlotsUI <- function(id) {
 geneVsGeneListModePlots <- function(input, output, session, 
                                     parent_session,
                                     GlobalData, dataTables) {
+  downloadsList <- reactiveValues()
+  uiName <- reactiveVal()
+  fileName <- reactiveVal()
+  primaryGene <- reactiveVal()
+  corrValDF <- reactiveVal()
+  tTest_pvalsPlot <- reactiveVal()
+  processed <- reactiveVal()
+  sigTest <- reactiveVal()
+  secondaryGenes <- reactiveVal()
+  tissueType <- reactiveVal()
+  sampleType <- reactiveVal()
   
-  observe({
-    
+  observeEvent(dataTables$geneVsGeneListModeData(), {
+    req(dataTables$geneVsGeneListModeData())
+    processed(FALSE)
+    tissueType(NULL)
+    primaryGene(NULL)
+    sampleType(NULL)
     dataListReact <- dataTables[["geneVsGeneListModeData"]]
     dataList <- dataListReact()
     data <- dataList[[1]]
     species <- dataList[["species"]]
-    primaryGene <- dataList[["primaryGene"]]
-    tissueType <- dataList[["tissueType"]]
-    sampleType <- dataList[["sampleType"]]
+    primaryGene(dataList[["primaryGene"]])
+    tissueType <- gsub(tissueType(), pattern = "0", replacement = " ")
+    tissueType(dataList[["tissueType"]])
+    sampleType(dataList[["sampleType"]])
     if (species == "Human") {
       GeneInfo <- GlobalData$HS_basicGeneInfo
     } else {
       GeneInfo <- GlobalData$MM_basicGeneInfo
     }
     
-    tissueType <- gsub(tissueType, pattern = "0", replacement = " ")
-    uiName <- paste0(primaryGene, " (",
-                     tissueType, " - ",
-                     sampleType, ")")
-    fileName <- paste0(primaryGene, "_",
-                       tissueType, "_",
-                       sampleType)
-    
+    uiName(paste0(primaryGene(), " (",
+                     tissueType(), " - ",
+                     sampleType(), ")"))
+    fileName(paste0(primaryGene(), "_",
+                       tissueType(), "_",
+                       sampleType()))
+    downloadsList[["correlationData"]] <- NULL
     progress <- dataList[["progress"]]
-    on.exit(progress$close())
     progress$inc(.4, message = "Returning results ... ")
-    # Make a plot
-    output$geneHist <- renderPlotly({
-      corrDataDF <- data$Correlation_histogram$data
-      colnames(corrDataDF)[2] <- "vals"
-      corrDataDF <- corrDataDF[order(corrDataDF$vals, decreasing = T),]
-      a <- list(
-        title = "Correlation values"
-      )
-      p <- ggpubr::gghistogram(data = corrDataDF, x = "vals", y = "..count..",
-                               bins = 50, ylab = "Frequency\n",
-                               title = uiName, 
-                               xlab = paste0(primaryGene, " correlation values")) +
-        ggplot2::scale_y_continuous(expand = c(0, 0))
-      p <- ggplotly(p)
-      corrDataDF2 <- corrDataDF[which(corrDataDF$secondaryGene),]
-      p <- p %>% 
-        add_segments(data = corrDataDF2, x = ~vals, 
-                     xend = ~vals, y = 0, 
-                     yend = 500, color = I('blue'),
-                     text = ~paste('Gene: ', geneName, " - Value: ", round(vals, 3)),
-                     opacity = .7) %>%
-        layout(showlegend = FALSE, xaxis = a) %>%
-        config(plot_ly(), displaylogo = F,
-               modeBarButtonsToRemove = list('zoom2d', 'pan2d', 
-                                             'autoScale2d', 
-                                             'hoverCompareCartesian',
-                                             'hoverClosestCartesian',
-                                             'zoomIn2d', 'zoomOut2d',
-                                             'select2d', 'lasso2d'),
-               toImageButtonOptions= list(filename = paste0(fileName,
-                                                            "_geneVsGeneListMode_correlationHistogram"),
-                                          format = "png",
-                                          width = 1000,
-                                          height = 600))
-      
-      s <- input$correlationData_rows_selected
-      if (length(s)) {
-        corrDataDF3 <- corrDataDF2[s,]
-        p <- p %>% 
-          add_segments(data = corrDataDF3, x = ~vals, 
-                       text = ~paste('Gene: ', geneName, " - Value: ", round(vals, 3)),
-                       xend = ~vals, y = 0, yend = 500) 
-      } else {
-        p <- p %>% highlight("plotly_selected", color = I('green'))
-      }
-      p
-    })
+    on.exit(progress$close())
+    corrDataDF <- data$Correlation_histogram$data
+    secondaryGenes(unique(corrDataDF$geneName[which(corrDataDF$secondaryGene)]))
+    print(secondaryGenes())
+    corrDataDF <- corrDataDF[,c(1,2)]
+    colnames(corrDataDF)[2] <- "Values"
+    corrDataDF <- merge(x = corrDataDF, y = GeneInfo, all.x = T, by = "geneName")
+    print(colnames(corrDataDF))
+    corrDataDF <- corrDataDF[,c(1, 4, 2)]
+    corrDataDF <- corrDataDF[order(corrDataDF$Values, decreasing = T),]
+    rownames(corrDataDF) <- NULL
+    corrDataDF <- unique(corrDataDF)
+    corrValDF(corrDataDF)
     
-    corrValDFReact <- reactive({
-      # Setup dataframe to match plotly data
-      corrValDF <- data$Correlation_Values
-      corrValDF <- data.frame(geneName = names(corrValDF), 
-                              Values = corrValDF, row.names = NULL)
-      corrValDF <- merge(x = corrValDF, y = GeneInfo, all.x = T, by = "geneName")
-      corrValDF <- corrValDF[,c(1, 4, 2)]
-      corrValDF <- unique(corrValDF)
-      corrValDF <- corrValDF[order(corrValDF$Values, decreasing = T),]
-      rownames(corrValDF) <- NULL
-      corrValDF <- unique(corrValDF)
-      corrValDF
-    })
-    
-    
-    downloadDataPairs <- list(
-      "content" = corrValDFReact(),
-      "uiName" = paste0(strong("Correlations: "), uiName),
-      "file" = ".tsv"
-    )
-    downloadsList <- reactiveValues("correlationData" = downloadDataPairs)
-    
-    callModule(module = downloadData, id = "geneVsGeneListModeDownloads", 
-               primaryName = uiName, downloadsListReact = downloadsList)
-    
-    # Make correlation values datatable
-    output$correlationData <- renderDataTable(server = T, {
-      
-      corrValDF <- corrValDFReact()
-      # Replace gene name with HTML to call gene info modal
-      corrValDF$geneName <- createGeneInfoLink(corrValDF$geneName)
-      # Construct datatable
-      DT_out <- datatable(corrValDF, selection = "single",
-                          rownames = F, escape = F,  
-                          colnames = c("Gene Name", "Description",
-                                       "Correlation Value"),
-                          options = list(dom = "ftprl",
-                                         scrollX = TRUE,
-                                         pageLength = 6)
-      )
-      DT_out
-    }, escape = F)
-    observe({
-      req(corrValDFReact())
-      print("In proxy!!")
-      proxy <- dataTableProxy('correlationData')
-      reloadData(proxy)
-      selectRows(proxy, 1)
-    })
-    
-    # Render correlation data UI
-    output$correlationsUI <- renderUI({
-      ns <- session$ns
-      tagList(
-        hr(),
-        h3("Correlation data"),
-        hr(),
-        fluidRow(
-          column(width = 6, #title = "Correlation Histogram",
-                 plotlyOutput(ns("geneHist"))
-          ),
-          column(width =  6, #title = "Correlation Data",
-                 DT::dataTableOutput(ns("correlationData"))
-          )
-        )
-      )
-    })
-    # Make a plot of significance tests
-    if (length(data$sigTest)) {
-      
-      output$sigTestPlotsUI <- renderUI({
-        ns <- session$ns
-        tagList(
-          
-          fluidRow(
-            
-            hr(),
-            h3("Significance test plot"),
-            hr(),
-            column(width = 8, 
-                   plotlyOutput(ns("sigTestPlots"),
-                                height = "100%")
-            )
-          )
-        )
-      })
-      
-      output$sigTestPlots <- renderPlotly({
-        m <- list(
-          l = 50,
-          r = 50,
-          b = 50,
-          t = 50,
-          pad = 4
-        )
-        
-        p3 <- data$sigTest$tTest_pvalsPlot
-        p3 <- ggplotly(p3)
-        p3 <- p3 %>% layout(title = paste0(primaryGene, 
-                                           " correlation with secondary genes"),
-                            xaxis = list(title = 't.test p value')) %>%
-          layout(autosize = F, margin = m) %>%
-          config(plot_ly(), displaylogo = F,
-                 modeBarButtonsToRemove = list('zoom2d', 'pan2d', 
-                                               'autoScale2d', 
-                                               'hoverCompareCartesian',
-                                               'hoverClosestCartesian',
-                                               'zoomIn2d', 'zoomOut2d',
-                                               'select2d', 'lasso2d'),
-                 toImageButtonOptions= list(filename = paste0(fileName,
-                                                              "_correlation_sigTest"),
-                                            format = "png",
-                                            width = 1000,
-                                            height = 600))
-        p3
-      })
-      
+    if ("sigTest" %in% names(data)) {
+      sigTest(TRUE)
+      tTest_pvalsPlot(data$sigTest$tTest_pvalsPlot)
     } else {
-      output$sigTestPlotsUI <- renderUI({
-        ns <- session$ns
-        tagList(
-          fluidRow(
-            hr(),
-            h4(em("Select 'Test significance' to run permutation tests")),
-            hr()
+      sigTest(FALSE)
+      tTest_pvalsPlot(NULL)
+    }
+    
+    processed(TRUE)
+    print("End of gene vs gene list plots memory: ")
+    print(pryr::mem_used())
+  })
+  
+  output$geneHist <- renderPlotly({
+    req(processed())
+    a <- list(
+      title = "Correlation values"
+    )
+    plt <- ggpubr::gghistogram(data = corrValDF(), x = "Values", y = "..count..",
+                             bins = 50, ylab = "Frequency\n",
+                             title = uiName(), 
+                             xlab = paste0(primaryGene(), " correlation values")) +
+      ggplot2::scale_y_continuous(expand = c(0, 0))
+    plt <- ggplotly(plt)
+    corrDataDF2 <- corrValDF()[which(corrValDF()$geneName %in% secondaryGenes()),]
+    plt <- plt %>% 
+      add_segments(data = corrDataDF2, x = ~Values, 
+                   xend = ~Values, y = 0, 
+                   yend = 500, color = I('blue'),
+                   text = ~paste('Gene: ', geneName, " - Value: ", round(Values, 3)),
+                   opacity = .7) %>%
+      layout(showlegend = FALSE, xaxis = a) %>%
+      config(plot_ly(), displaylogo = F,
+             modeBarButtonsToRemove = list('zoom2d', 'pan2d', 
+                                           'autoScale2d', 
+                                           'hoverCompareCartesian',
+                                           'hoverClosestCartesian',
+                                           'zoomIn2d', 'zoomOut2d',
+                                           'select2d', 'lasso2d'),
+             toImageButtonOptions= list(filename = paste0(fileName(),
+                                                          "_geneVsGeneListMode_correlationHistogram"),
+                                        format = "png",
+                                        width = 1000,
+                                        height = 600))
+    
+    s <- input$correlationData_rows_selected
+    if (length(s)) {
+      corrDataDF3 <- corrDataDF2[s,]
+      plt <- plt %>% 
+        add_segments(data = corrDataDF3, x = ~Values, 
+                     text = ~paste('Gene: ', geneName, " - Value: ", round(Values, 3)),
+                     xend = ~Values, y = 0, yend = 500) 
+    } else {
+      plt <- plt %>% highlight("plotly_selected", color = I('green'))
+    }
+    plt
+  })
+  
+
+  
+  # Make correlation values datatable
+  output$correlationData <- renderDataTable(server = T, {
+    req(processed())
+    corrValDFNow <- corrValDF()[which(corrValDF()$geneName %in% secondaryGenes()),]
+    # Replace gene name with HTML to call gene info modal
+    corrValDFNow$geneName <- createGeneInfoLink(corrValDFNow$geneName)
+    # Construct datatable
+    DT_out <- datatable(corrValDFNow, selection = "single",
+                        rownames = F, escape = F,  
+                        colnames = c("Gene Name", "Description",
+                                     "Correlation Value"),
+                        options = list(dom = "ftprl",
+                                       scrollX = TRUE,
+                                       pageLength = 6)
+    )
+    DT_out
+  }, escape = F)
+  observe({
+    req(corrValDF())
+    proxy <- dataTableProxy('correlationData')
+    reloadData(proxy)
+    selectRows(proxy, 1)
+  })
+  
+  # Render correlation data UI
+  output$correlationsUI <- renderUI({
+    req(processed())
+    ns <- session$ns
+    tagList(
+      hr(),
+      h3("Correlation data"),
+      hr(),
+      fluidRow(
+        column(width = 6, #title = "Correlation Histogram",
+               plotlyOutput(ns("geneHist"))
+        ),
+        column(width =  6, #title = "Correlation Data",
+               DT::dataTableOutput(ns("correlationData"))
+        )
+      )
+    )
+  })
+  
+  
+  output$sigTestPlotsUI <- renderUI({
+    ns <- session$ns
+    req(processed())
+    if (sigTest()) {
+      req(sigTest())
+      tagList(
+        fluidRow(
+          hr(),
+          h3("Significance test plot"),
+          hr(),
+          column(width = 8, 
+                 plotlyOutput(ns("sigTestPlots"),
+                              height = "100%")
           )
         )
-      })
+      )
+    } else {
+      req((! sigTest()))
+      tagList(
+        fluidRow(
+          hr(),
+          h4(em("Select 'Test significance' to run permutation tests")),
+          hr()
+        )
+      )
     }
   })
+  
+  output$sigTestPlots <- renderPlotly({
+    req(processed())
+    req(sigTest())
+    m <- list(
+      l = 50,
+      r = 50,
+      b = 50,
+      t = 50,
+      pad = 4
+    )
+    p3 <- tTest_pvalsPlot()
+    p3 <- ggplotly(p3)
+    p3 <- p3 %>% layout(title = paste0(primaryGene(), 
+                                       " correlation with secondary genes"),
+                        xaxis = list(title = 't.test p value')) %>%
+      layout(autosize = F, margin = m) %>%
+      config(plot_ly(), displaylogo = F,
+             modeBarButtonsToRemove = list('zoom2d', 'pan2d', 
+                                           'autoScale2d', 
+                                           'hoverCompareCartesian',
+                                           'hoverClosestCartesian',
+                                           'zoomIn2d', 'zoomOut2d',
+                                           'select2d', 'lasso2d'),
+             toImageButtonOptions= list(filename = paste0(fileName(),
+                                                          "_correlation_sigTest"),
+                                        format = "png",
+                                        width = 1000,
+                                        height = 600))
+    p3
+  })
+  
+
+  observe({
+    req(processed())
+    invalidateLater(500)
+    downloadsList[["correlationData"]] <- list(
+      "content" = corrValDF()[which(corrValDF()$geneName %in% secondaryGenes()),],
+      "uiName" = paste0(strong("Correlations: "), uiName()),
+      "file" = ".tsv"
+    )
+    callModule(module = downloadData, id = "geneVsGeneListModeDownloads", 
+               primaryName = uiName(), downloadsListReact = downloadsList)
+  })
+  
+  
 }
 
 ## Topology-Mode analysis ##
@@ -2191,7 +2230,6 @@ topologyModeAnalysis <- function(input, output, session,
                            species = species, 
                            tissueType = tissueType)
   
-  data <- reactiveVal()
   data <- eventReactive(eventExpr = input$do, {
     secondaryGenes <- secondaryGenes()
     species <- input$species
@@ -2242,7 +2280,6 @@ topologyModeAnalysis <- function(input, output, session,
     pass <- 1
     if (! cleanRes$geneSetInputType & length(cleanRes$secondaryGenes) < 3) {
       msg <- "Topology analysis requires 3+ valid genes."
-      print("FAIL")
       showNotification(ui = msg, 
                        duration = 8, type = 'error')
       pass <- 0
@@ -2290,8 +2327,7 @@ topologyModeAnalysis <- function(input, output, session,
                 "crossComparisonType" = crossComparisonType,
                 "tissueType" = cleanRes$tissueType,
                 "sampleType" = cleanRes$sampleType,
-                "progress" = progress,
-                "do" = reactive(input$do))
+                "progress" = progress)
     res
   })
   return(data)
@@ -2332,19 +2368,6 @@ topologyModePlotsUI <- function(id) {
             br(),
             withSpinner(plotlyOutput(ns("varHeat"), width = "1200px"), type = 7)
             
-          ),
-          fluidRow(
-            br(),
-            column(width = 5, offset = 4,
-                   sliderInput(inputId = ns("varHeatSelectSize"), 
-                               label = "# shown genes above and below click", 
-                               min = 0, max = 150, step = 1, value = 15))
-          ),
-          fluidRow(
-            br(),
-            column(width = 8, offset = 2,
-                   withSpinner(DT::dataTableOutput(ns("varDT")), type = 7)
-            )
           )
         ),
         tabPanel(
@@ -2379,9 +2402,6 @@ topologyModePlots <- function(input, output, session,
                               parent_session,
                               GlobalData, dataTables) {
   
-  # # Bug testing
-  # dataTables <- list("singleModeData" = res)
-  
   hideTab(inputId = "topologyNavs", target = "dimReduction", 
           session = session)
   hideTab(inputId = "topologyNavs", target = "varGenes", 
@@ -2391,67 +2411,172 @@ topologyModePlots <- function(input, output, session,
   hideTab(inputId = "topologyNavs", target = "downloadsTab", 
           session = session)
   
+  
+  # for all modes
+  tissueType <- reactiveVal()
+  uiName <- reactiveVal()
+  fileName <- reactiveVal()
+  correlations <- reactiveVal()
+  species <- reactiveVal()
+  sampleType <- reactiveVal()
+  downloadsList <- reactiveValues()
+  processed <- reactiveVal()
+  basicGeneInfo <- reactiveVal()
+  dataNow <- reactiveVal()
+  
+  # Mode types
+  dimReduce <- reactiveVal()
+  dimMode <- reactiveVal()
+  varHeatMode <- reactiveVal()
+  pathEnrich <- reactiveVal()
+  
+  # Dim reduce
+  PCADT <- reactiveVal()
+  PCAPlot <- reactiveVal()
+  
+  # Var heat
+  variantGenesHeatmap_MAT <- reactiveVal()
+  
+  # Path enrich
+  inputGenes_pathwayEnrich_dotplot <- reactiveVal()
+  pathwayEnrichDT <- reactiveVal()
+  
+  # Initialize values for output
   observeEvent(eventExpr = dataTables$topologyModeData(), {
+    req(dataTables$topologyModeData())
     dataListReact <- dataTables[["topologyModeData"]]
     dataList <- dataListReact()
-    do <- dataList$do
-    selectedSpecies <- dataList$species
-    data <- dataList$topologyModeData
-    tissueType <- dataList[["tissueType"]]
-    sampleType <- dataList[["sampleType"]]
-    tissueType <- gsub(tissueType, pattern = "0", replacement = " ")
-    
-    uiName <- paste0(" (",
-                     tissueType, " - ",
-                     sampleType, ")")
-    fileName <- paste0(
-      tissueType, "_",
-      sampleType)
-    
-    if (selectedSpecies == "Human") {
-      basicGeneInfo <- GlobalData$HS_basicGeneInfo
-    } else {
-      basicGeneInfo <- GlobalData$MM_basicGeneInfo
-    }
-    
-    progress <- dataList$progress
-    progress$inc(.3, message = "Returning results ... ")
-    
-    
-    ##########################################################
-    
-    ##########################################################
-    
-    downloadsList <- reactiveValues()
-    corrData <- data$Correlation_Data
+    dataList$progress$inc(.3, message = "Returning results ... ")
+    on.exit(dataList$progress$close())
+    processed(FALSE)
+    do(dataList$do)
+    species(dataList$species)
+    dataRaw <- dataList$topologyModeData
+    corrData <- dataRaw$Correlation_Data
     corrData$geneName <- rownames(corrData)
     n <- length(colnames(corrData))
     corrData <- corrData[,c(n, 1:(n-1))]
+    dataRaw$Correlation_Data <- corrData
+    if (species() == "Human") {
+      basicGeneInfo(GlobalData$HS_basicGeneInfo)
+    } else {
+      basicGeneInfo(GlobalData$MM_basicGeneInfo)
+    }
+    
+    tissueTypeRaw <- dataList[["tissueType"]]
+    sampleType(dataList[["sampleType"]])
+    tissueType(gsub(tissueTypeRaw, pattern = "0", replacement = " "))
+    uiName(paste0(" (",
+                     tissueType(), " - ",
+                     sampleType(), ")"))
+    fileName(paste0(
+      tissueType(), "_",
+      sampleType()))
     downloadsList[["correlationData"]] <- list(
       "content" = corrData,
       "file" = ".tsv",
-      "uiName" = paste0(strong("Correlations: "), uiName)
+      "uiName" = paste0(strong("Correlations: "), uiName())
     )
-    if (length(names(data))) {
+    callModule(module = downloadData, id = "topologyModeDownloads", 
+               primaryName = "topologyMode", downloadsListReact = downloadsList)
+    
+    showTab(inputId = "topologyNavs", 
+            target = "downloadsTab", 
+            session = session, select = F)
+    
+    # Mode types
+    if ("PCA_plot" %in% names(dataRaw) | "TSNE_plot" %in% names(dataRaw)) {
+      dimReduce(TRUE)
+      if (length(dataRaw$TSNE_data)) {
+        dimMode("TSNE")
+        dt_data <- dataRaw$TSNE_data
+      } else {
+        dimMode("PCA")
+        dt_data <- dataRaw$PCA_data
+      }
+      if(dimMode() == "PCA") {
+        if (! dataRaw$clustered) {
+          dt_data <- dt_data[,c(3,1,2)]
+          colnames(dt_data)[1] <- "geneName"
+          dt_data <- merge(y = dt_data, x = basicGeneInfo(), all.y = T, by = "geneName")
+          dt_data <- dt_data[order(dt_data$PC1, decreasing = T),]
+          plt <- dataRaw$PCA_plot
+          plt <- ggplotly(plt)
+          plt <- plt %>%
+            config(plot_ly(), 
+                   toImageButtonOptions = list(
+                     filename = paste0(fileName(), "_topologyMode_PCA.png"),
+                     format = "png",
+                     width = 800,
+                     height = 600))
+        } else {
+          colnames(dt_data)[1] <- "geneName"
+          dt_data <- merge(y = dt_data, x = basicGeneInfo(), all.y = T, by = "geneName")
+          dt_data <- dt_data[order(dt_data$clusters, -dt_data$PC1),]
+          xaxistext <- dataRaw$PCA_plot$labels$x
+          yaxistext <- dataRaw$PCA_plot$labels$y
+          plt <- plot_ly(dt_data, x = ~PC1 , y = ~PC2, text = ~ geneNames,
+                         mode = "markers", color = ~clusters, marker = list(size = 7)) %>% 
+            layout(title = "PCA with clustering",
+                   xaxis = list(title = xaxistext),
+                   yaxis = list(title = yaxistext)) %>%
+            config(plot_ly(),
+                   toImageButtonOptions = list(
+                     filename = paste0(fileName(),
+                                       "_topologyMode_clusteredPCA.png")))
+        }
+      } else if (dimMode() == "TSNE") {
+        colnames(dt_data)[1] <- "geneName"
+        dt_data <- merge(y = dt_data, x = basicGeneInfo(), all.y = T, by = "geneName")
+        dt_data <- dt_data[order(dt_data$hclust, dt_data$tsne1),]
+        xaxistext <- dataRaw$TSNE_plot$labels$x
+        yaxistext <- dataRaw$TSNE_plot$labels$y
+        plt <- plot_ly(dt_data, x = ~tsne1 , y = ~tsne2, text =~ geneName,
+                     mode = "markers", color = ~hclust, marker = list(size = 7)) 
+        plt <- layout(plt, title = "TSNE with clustering", 
+                    xaxis = list(title = xaxistext),
+                    yaxis = list(title = yaxistext))
+        plt <- plt %>%
+          config(plot_ly(), displaylogo = F,
+                 modeBarButtonsToRemove = list(
+                   'hoverCompareCartesian',
+                   'hoverClosestCartesian',
+                   'zoomIn2d', 'zoomOut2d',
+                   'lasso2d'),
+                 toImageButtonOptions= list(filename = paste0(fileName(),
+                                                              "_topologyMode_TSNE.png"),
+                                            format = "png",
+                                            width = 1000,
+                                            height = 600))
+      } 
+      PCAPlot(plt)
+      rownames(dt_data) <- NULL
+      dt_data <- dt_data[,c(-2)]
+      # Replace gene name with HTML to call gene info modal
+      dt_data[,c(3,4)] <- apply(dt_data[,c(3,4)], 1:2, signif, 3)
+      downloadsList[["dimReduceData"]] <- list(
+        "content" = dt_data,
+        "file" = ".tsv",
+        "uiName" = paste0(strong(paste0(dimMode(), " data: ")), uiName())
+      )
+      dt_data$geneName <- createGeneInfoLink(dt_data$geneName)
+      
+      PCADT(list("data" = dt_data,
+                 "type" = dimMode(),
+                 "cluster" = dataRaw$clustered))
       showTab(inputId = "topologyNavs", 
-              target = "downloadsTab", 
+              target = "dimReduction", 
               session = session, select = F)
+    } else {
+      dimReduce(FALSE)
+      downloadsList[["dimReduceData"]] <- NULL
+      hideTab(inputId = "topologyNavs", target = "dimReduction", 
+              session = session)
     }
-    if ("PCA_data" %in% names(data)) {
-      downloadsList[["pcaData"]] <- list(
-        "content" = data$PCA_data,
-        "file" = ".tsv",
-        "uiName" = paste0(strong("PCA data: "), uiName)
-      )
-    } else if ("TSNE_data" %in% names(data)) {
-      downloadsList[["tsneData"]] <- list(
-        "content" = data$TSNE_data,
-        "file" = ".tsv",
-        "uiName" = paste0(strong("TSNE data: "), uiName)
-      )
-    }
-    if ("variantGenesHeatmap" %in% names(data)) {
-      ddata <- as.data.frame(data$variantGenesHeatmap_MAT)
+    if ("variantGenesHeatmap" %in% names(dataRaw)) {
+      varHeatMode(TRUE)
+      variantGenesHeatmap_MAT(dataRaw$variantGenesHeatmap_MAT)
+      ddata <- as.data.frame(variantGenesHeatmap_MAT())
       ddata$geneName <- rownames(ddata)
       n <- length(colnames(ddata))
       m <- n-1
@@ -2459,380 +2584,166 @@ topologyModePlots <- function(input, output, session,
       downloadsList[["variantGenesHeatmapMatrix"]] <- list(
         "content" = ddata,
         "file" = ".tsv",
-        "uiName" = paste0(strong("Heatmap data: "), uiName)
+        "uiName" = paste0(strong("Heatmap data: "), uiName())
       )
-    }
-    if ("inputGenes_pathwayEnrich_data" %in% names(data)) {
-      downloadsList[["pathwayEnrichmentData"]] <- list(
-        "content" = as.data.frame(data$inputGenes_pathwayEnrich),
-        "file" = ".tsv",
-        "uiName" = paste0(strong("Pathway enrichment: "), uiName)
-      )
-    }
-    
-    callModule(module = downloadData, id = "topologyModeDownloads", 
-               primaryName = "topologyMode", downloadsListReact = downloadsList)
-    ###########################################################
-    
-    
-    if ("PCA_plot" %in% names(data) | "TSNE_plot" %in% names(data)) {
-      
-      # Make the dimension reduction plot
-      PCAPlot <- reactive({
-        # If a PCA was run
-        if ("PCA_plot" %in% names(data)) {
-          if (data$clustered) {
-            xaxistext <- data$PCA_plot$labels$x
-            yaxistext <- data$PCA_plot$labels$y
-            PCADat <- data$PCA_data
-            p <- plot_ly(PCADat, x = ~PC1 , y = ~PC2, text = ~ geneNames,
-                         mode = "markers", color = ~clusters, marker = list(size = 7)) %>% 
-              layout(title = "PCA with clustering",
-                     xaxis = list(title = xaxistext),
-                     yaxis = list(title = yaxistext)) %>%
-              config(plot_ly(),
-                     toImageButtonOptions = list(filename = paste0(fileName, "_topologyMode_clusteredPCA.png")))
-          } else {
-            plt <- data$PCA_plot
-            p <- ggplotly(plt)
-            p <- p %>%
-              config(plot_ly(), 
-                     toImageButtonOptions = list(
-                       filename = paste0(fileName, "_topologyMode_PCA.png"),
-                       format = "png",
-                       width = 800,
-                       height = 600))
-          }
-        } else if ("TSNE_plot" %in% names(data)) {
-          TSNEDat <- data$TSNE_data
-          xaxistext <- data$TSNE_plot$labels$x
-          yaxistext <- data$TSNE_plot$labels$y
-          p <- plot_ly(TSNEDat, x = ~tsne1 , y = ~tsne2, text =~ geneNames,
-                       mode = "markers", color = ~hclust, marker = list(size = 7)) 
-          p <- layout(p, title = "TSNE with clustering", 
-                      xaxis = list(title = xaxistext),
-                      yaxis = list(title = yaxistext))
-          p <- p %>%
-            config(plot_ly(), displaylogo = F,
-                   modeBarButtonsToRemove = list(
-                     'hoverCompareCartesian',
-                     'hoverClosestCartesian',
-                     'zoomIn2d', 'zoomOut2d',
-                     'lasso2d'),
-                   toImageButtonOptions= list(filename = paste0("topologyMode_TSNE.png"),
-                                              format = "png",
-                                              width = 1000,
-                                              height = 600))
-        }
-        p
-      })
-      # Do not suspend when hidden by tab
-      observeEvent(PCAPlot(), {
-        output$PCAPlot <- renderPlotly({
-          l <- PCAPlot()
-          l$x$layout$width <- NULL
-          l$x$layout$height <- NULL
-          l$width <- NULL
-          l$height <- NULL
-          l
-        })
-        outputOptions(output, 'PCAPlot', suspendWhenHidden = FALSE)
-      })
-      
-      PCADT <- reactive({
-        # Get appropriate data
-        if ("PCA_data" %in% names(data)) {
-          if (data$clustered) {
-            dt_data <- data$PCA_data
-            colnames(dt_data)[1] <- "geneName"
-            # Setup dataframe to match plotly data
-            dt_data <- merge(y = dt_data, x = basicGeneInfo, all.y = T, by = "geneName")
-            dt_data <- dt_data[order(dt_data$clusters, -dt_data$PC1),]
-            rownames(dt_data) <- NULL
-            dt_data <- dt_data[,c(-2)]
-            # Replace gene name with HTML to call gene info modal
-            dt_data$geneName <- createGeneInfoLink(dt_data$geneName)
-            dt_data[,c(3,4)] <- apply(dt_data[,c(3,4)], 1:2, signif, 3)
-            # Construct datatable
-            dt_dataList <- list("data" = dt_data,
-                                "type" = "PCA",
-                                "cluster" = TRUE)
-          } else {
-            dt_data <- data$PCA_data
-            dt_data <- dt_data[,c(3,1,2)]
-            colnames(dt_data)[1] <- "geneName"
-            # Setup dataframe to match plotly data
-            dt_data <- merge(y = dt_data, x = basicGeneInfo, all.y = T, by = "geneName")
-            dt_data <- dt_data[order(-dt_data$PC1),]
-            dt_data <- dt_data[,c(-2)]
-            dt_data[,c(3,4)] <- apply(dt_data[,c(3,4)], 1:2, signif, 3)
-            # Replace gene name with HTML to call gene info modal
-            dt_data$geneName <- createGeneInfoLink(dt_data$geneName)
-            dt_data <- unique(dt_data)
-            # Construct datatable
-            dt_dataList <- list("data" = dt_data,
-                                "type" = "PCA",
-                                "cluster" = FALSE)
-            
-          }
-          
-        } else if ("TSNE_data" %in% names(data)) {
-          dt_data <- data$TSNE_data
-          colnames(dt_data)[1] <- "geneName"
-          # Setup dataframe to match plotly data
-          dt_data <- merge(y = dt_data, x = basicGeneInfo, all.y = T, by = "geneName")
-          dt_data <- dt_data[order(dt_data$hclust, -dt_data$tsne1),]
-          dt_data <- dt_data[,c(-2)]
-          dt_data[,c(3,4)] <- apply(dt_data[,c(3,4)], 1:2, signif, 3)
-          # Replace gene name with HTML to call gene info modal
-          dt_data$geneName <- createGeneInfoLink(dt_data$geneName)
-          dt_data <- unique(dt_data)
-          dt_dataList <- list("data" = dt_data,
-                              "type" = "TSNE",
-                              "cluster" = TRUE)
-        }
-        dt_dataList
-      })
-      
-      output$PCADT <- DT::renderDataTable(server = T, {
-        # Make dimension reduction datatables output
-        PCADT <- PCADT()
-        dt_data <- PCADT$data
-        type <- PCADT$type
-        cluster <- PCADT$cluster
-        
-        if (type == "PCA" & ! cluster) {
-          DT_out <- datatable(dt_data, selection = "single",
-                              rownames = F, escape = F,
-                              colnames = c("Gene Name",
-                                           "Description", "PC1", "PC2"),
-                              options = list(dom = "ftprl",
-                                             scrollX = TRUE,
-                                             pageLength = 6))
-        } else if (type == "PCA" & cluster) {
-          DT_out <- datatable(dt_data, selection = "single",
-                              rownames = F, escape = F,  filter = 'top',
-                              colnames = c("Gene Name",
-                                           "Description", "PC1", "PC2", "Cluster"),
-                              options = list(dom = "tprl",
-                                             scrollX = TRUE,
-                                             pageLength = 6))
-        } else {
-          DT_out <- datatable(dt_data, selection = "single",
-                              rownames = F, escape = F,  filter = list(position = 'top',
-                                                                       plain = TRUE), 
-                              colnames = c("Gene Name",
-                                           "Description", "TSNE 1", "TSNE 2", "Cluster"),
-                              options = list(dom = "tprl",
-                                             scrollX = TRUE,
-                                             pageLength = 6))
-        }
-        
-      }, escape = F)
-      outputOptions(output, 'PCADT', suspendWhenHidden = FALSE)
-      
-      # This observer is needed because of a bug/feature of shiny DT::
-      # It will look for changes in PCADT and force the datatable to reload
-      observeEvent(PCADT(), {
-        # Make dimension reduction datatables output
-        PCADT <- PCADT()
-        dt_data <- PCADT$data
-        type <- PCADT$type
-        cluster <- PCADT$cluster
-        PCADT_proxy <- dataTableProxy("PCADT", session = session,
-                                      deferUntilFlush = TRUE)
-        reloadData(PCADT_proxy)
-        
-      })
-      
-      
-      showTab(inputId = "topologyNavs", 
-              target = "dimReduction", 
-              session = session, select = F)
-      
-    } else {
-      hideTab(inputId = "topologyNavs", target = "dimReduction", 
-              session = session)
-    }
-    
-    if ("variantGenesHeatmap" %in% names(data)) {
-      
-      
-      
-      varHeat <- reactive({
-        plt_dat <- data$variantGenesHeatmap_MAT
-        # Center the scale
-        n <- length(colnames(plt_dat))# Get number of samples
-        width <- n*50
-        if (width < 800) {
-          width <- 800
-        } else if (width > 6000) {
-          width <- 6000
-        }
-        mini <- min(plt_dat)
-        maxi <- max(plt_dat)
-        newVal <- max(c(abs(mini), maxi))
-        p <- heatmaply(plt_dat, hide_colorbar = TRUE, 
-                       limits = c(-1*newVal, newVal), 
-                       colors = gplots::greenred(100), showticklabels = c(T, F))
-        p <- p %>%
-          config(plot_ly(), displaylogo = F,
-                 modeBarButtonsToRemove = list(
-                   'hoverCompareCartesian',
-                   'hoverClosestCartesian',
-                   'zoomIn2d', 'zoomOut2d',
-                   'lasso2d'),
-                 toImageButtonOptions= list(filename = paste0(fileName,
-                                                              "_topologyMode_variantGenesHeatmap.png"),
-                                            format = "png",
-                                            width = width,
-                                            height = 500))
-        p
-      })
-      output$varHeat <- renderPlotly({
-        withProgress(value = .4, message = "Rendering interactive heatmap ... ", {
-          varHeat()
-        })
-      })
-      outputOptions(output, 'varHeat', suspendWhenHidden = FALSE)
-      
-      # Get indices of plotly-selected genes
-      selection_varHeat <- reactive({
-        s <- event_data("plotly_click")
-        df <- data.frame(s)
-        df
-      })
-      
-      varDT <- reactive({
-        p <- varHeat()
-        plot_text <- p$x$data[[4]]$text
-        plot_coord_x <- p$x$data[[4]]$x
-        plot_coord_y <- p$x$data[[4]]$y
-        plot_coord_z <- p$x$data[[4]]$z
-        plot_text_df <- as.data.frame(plot_text)
-        genes <- strsplit(substr(as.character(plot_text_df[,1]), 6, 100), "<")
-        genes <- sapply(genes, "[[", 1)
-        genesDF <- data.frame(geneName = genes, y_coord = plot_coord_y)
-        
-        dt_data <- unique(basicGeneInfo[,c(3,2)])
-        dt_data <- merge(x = dt_data, y = genesDF, by = "geneName")
-        dt_data <- dt_data[order(dt_data$y_coord),]
-        s <- selection_varHeat()
-        if (length(s)) {
-          x <- s$x[1]
-          y <- s$y[1]
-          z <- s$z[1]
-          
-          plot_pinpoint <- as.character(plot_text_df[y,x])
-          selectSize <- input$varHeatSelectSize
-          y_pos_vec <- c(y-selectSize, y + selectSize)
-          y_pos_vec[which(y_pos_vec < 1)] <- 1
-          y_pos_vec[which(y_pos_vec > 1500)] <- 1500
-          plot_pinpoints <- as.character(plot_text_df[c(y_pos_vec[1]:y_pos_vec[2]),x])
-          genes <- strsplit(substr(plot_pinpoints, 6, 100), "<")
-          genes <- sapply(genes, "[[", 1)
-          dt_data <- dt_data[which(dt_data$geneName %in% genes),]
-        }
-        dt_data <- unique(dt_data)
-        dt_data
-      })
-      # Make dimension reduction datatables output
-      output$varDT <- renderDataTable(server = T, {
-        # Data inputs
-        # Varheat data
-        dt_data <- varDT()
-        DT_out <- datatable(dt_data, selection = "single",
-                            rownames = F, escape = F,  
-                            colnames = c("Gene Name", 
-                                         "Description",
-                                         "Heatmap Y Position"),
-                            options = list(dom = "tprl",
-                                           scrollX = F,
-                                           pageLength = 6))
-        
-        
-        DT_out
-        
-      }, escape = F)
-      
       showTab(inputId = "topologyNavs", 
               target = "varGenes", select = F,
               session = session)
-      
-      observeEvent(varDT(), {
-        varHeat_proxy <- dataTableProxy("varDT", session = session,
-                                        deferUntilFlush = TRUE)
-        reloadData(varHeat_proxy)
-        
-      })
     } else {
+      varHeatMode(FALSE)
+      downloadsList[["variantGenesHeatmapMatrix"]] <- NULL
       hideTab(inputId = "topologyNavs", target = "varGenes", 
               session = session)
     }
-    
-    if ("inputGenes_pathwayEnrich" %in% names(data)) {
-      # Get the pathway enrichment results and display dotplot
-      output$pathwayEnrichPlot <- renderPlot({
-        eres <- data$inputGenes_pathwayEnrich_data
-        shiny::validate(need(length(eres),
-                             "No results returned at selected p value cutoff. Please increase it."))
-        dp <- data$inputGenes_pathwayEnrich_dotplot
-        dp
-      })
-      
-      pathwayEnrichDT <- reactive({
-        eres <- data$inputGenes_pathwayEnrich_data
-        eres <- eres[,c(2, 3, 5, 6, 8)]
-        eres <- eres[order(eres[,3], decreasing = F),]
-        if (length(eres$Description) > 100) {
-          eres <- eres[c(1:100),]
-        }
-        eres[,c(3,4)] <- apply(eres[,c(3,4)], 1:2, round, digits = 4)
-        eresTitles <- eres$Description
-        eresTitles <- correlationAnalyzeR::fixStrings(eresTitles)
-        eresTitles[which(nchar(eresTitles) > 60)] <- paste0(substr(eresTitles[which(nchar(eresTitles) > 60)], 1, 57), "...")
-        eres$Description <- createGSEAInfoLink(eres$Description, eresTitles)
-        eres
-      })
-      # Display the pathway enrichment data
-      output$pathwayEnrichDT <- renderDataTable(server = T, {
-        eres <- pathwayEnrichDT()
-        datatable(eres, rownames = F, escape = F, 
-                  options = list(
-                    pageLength = 8,
-                    autoWidth = TRUE,
-                    columnDefs = list(list(width = '200px', targets = c(4)),
-                                      list(width = '100px', targets = c(1,2,3))),
-                    dom = "ftprl",
-                    scrollX = TRUE
-                  ),
-                  colnames = c("Pathway", "Gene ratio",
-                               "Pval", "Padj", "Genes included"))
-      }, escape = F)
-      outputOptions(output, 'pathwayEnrichDT', suspendWhenHidden = FALSE)
-      
-      
+    if ("inputGenes_pathwayEnrich" %in% names(dataRaw)) {
+      pathEnrich(TRUE)
+      eres <- dataRaw$inputGenes_pathwayEnrich_data
+      shiny::validate(need(length(eres),
+                           "No results returned at selected p value cutoff. Please increase it."))
+      inputGenes_pathwayEnrich_dotplot(dataRaw$inputGenes_pathwayEnrich_dotplot)
+      eres <- eres[,c(2, 3, 5, 6, 8)]
+      eres <- eres[order(eres[,3], decreasing = F),]
+      if (length(eres$Description) > 100) {
+        eres <- eres[c(1:100),]
+      }
+      eres[,c(3,4)] <- apply(eres[,c(3,4)], 1:2, round, digits = 4)
+      eresTitles <- eres$Description
+      eresTitles <- correlationAnalyzeR::fixStrings(eresTitles)
+      eresTitles[which(nchar(eresTitles) > 60)] <- paste0(substr(eresTitles[which(nchar(eresTitles) > 60)], 1, 57), "...")
+      eres$Description <- createGSEAInfoLink(eres$Description, eresTitles)
+      pathwayEnrichDT(eres)
+      downloadsList[["pathwayEnrichmentData"]] <- list(
+        "content" = as.data.frame(dataRaw$inputGenes_pathwayEnrich),
+        "file" = ".tsv",
+        "uiName" = paste0(strong("Pathway enrichment: "), uiName())
+      )
       showTab(inputId = "topologyNavs", 
               target = "pathwayEnrich", select = F,
               session = session)
-      
-      # This observer is needed because of a bug/feature of shiny DT::
-      # It will look for changes in PCADT and force the datatable to reload
-      observeEvent(pathwayEnrichDT(), {
-        pathwayEnrichDT_proxy <- dataTableProxy("pathwayEnrichDT", session = session,
-                                                deferUntilFlush = TRUE)
-        reloadData(pathwayEnrichDT_proxy)
-        
-      })
-      
     } else {
+      pathEnrich(FALSE)
+      downloadsList[["pathwayEnrichmentData"]] <- NULL
       hideTab(inputId = "topologyNavs", target = "pathwayEnrich", 
               session = session)
     }
-    
-    progress$close()
+    processed(TRUE)
+    print("End of topology plots memory: ")
+    print(pryr::mem_used())
   })
   
+  # Dim reduction
+  output$PCAPlot <- renderPlotly({
+    req(processed())
+    req(dimReduce())
+    l <- PCAPlot()
+    l$x$layout$width <- NULL
+    l$x$layout$height <- NULL
+    l$width <- NULL
+    l$height <- NULL
+    l
+  })
+  outputOptions(output, 'PCAPlot', suspendWhenHidden = FALSE)
+  
+  output$PCADT <- DT::renderDataTable({
+    # Make dimension reduction datatables output
+    req(processed())
+    req(dimReduce())
+    dt_data <- PCADT()$data
+    if (dimMode() == "TSNE") {
+      cols <- c("Gene Name",
+                "Description", "TSNE 1", "TSNE 2", "Cluster")
+      filterStr <- list(position = "top", plain = TRUE)
+    } else {
+      cluster <- PCADT()$cluster
+      cols <- c("Gene Name",
+                "Description", "PC1", "PC2")
+      if (cluster) {
+        cols <- c(cols, "Cluster")
+        filterStr <- list(position = "top", plain = TRUE)
+      } else {
+        filterStr <- "none"
+      }
+    }
+    DT_out <- datatable(dt_data, selection = "single",
+                        rownames = F, escape = F, 
+                        colnames = cols, filter = filterStr,
+                        options = list(dom = "ftprl",
+                                       scrollX = TRUE,
+                                       pageLength = 6))
+    DT_out
+  })
+  # outputOptions(output, 'PCADT', suspendWhenHidden = FALSE)
+  # observeEvent(PCADT(), {
+  #   PCADT_proxy <- dataTableProxy("PCADT", session = session,
+  #                                 deferUntilFlush = TRUE)
+  #   reloadData(PCADT_proxy)
+  # })
+  
+  # Variant heat genes
+  varHeat <- reactive({
+    req(processed())
+    req(varHeatMode())
+    plt_dat <- variantGenesHeatmap_MAT()
+    # Center the scale
+    n <- length(colnames(plt_dat))# Get number of samples
+    
+    width <- n*50
+    if (width < 800) {
+      width <- 800
+    } else if (width > 6000) {
+      width <- 6000
+    }
+    mini <- min(plt_dat)
+    maxi <- max(plt_dat)
+    newVal <- max(c(abs(mini), maxi))
+    plt <- heatmaply(plt_dat, hide_colorbar = TRUE, 
+                   limits = c(-1*newVal, newVal), 
+                   colors = gplots::greenred(100), showticklabels = c(T, F))
+    plt <- plt %>%
+      config(plot_ly(), displaylogo = F,
+             modeBarButtonsToRemove = list(
+               'hoverCompareCartesian',
+               'hoverClosestCartesian',
+               'zoomIn2d', 'zoomOut2d',
+               'lasso2d'),
+             toImageButtonOptions= list(filename = paste0(fileName(),
+                                                          "_topologyMode_variantGenesHeatmap.png"),
+                                        format = "png",
+                                        width = width,
+                                        height = 500))
+    plt
+  })
+  output$varHeat <- renderPlotly({
+    req(processed())
+    req(varHeatMode())
+    withProgress(value = .4, message = "Rendering interactive heatmap ... ", {
+      varHeat()
+    })
+  })
+  outputOptions(output, 'varHeat', suspendWhenHidden = FALSE)
+  
+  # Pathway enrichment
+  output$pathwayEnrichPlot <- renderPlot({
+    inputGenes_pathwayEnrich_dotplot()
+  })
+  output$pathwayEnrichDT <- renderDataTable({
+    pathwayEnrichDT()
+  }, rownames = F, escape = F, 
+  options = list(
+    pageLength = 8,
+    autoWidth = TRUE,
+    columnDefs = list(list(width = '200px', targets = c(4)),
+                      list(width = '100px', targets = c(1,2,3))),
+    dom = "ftprl",
+    scrollX = TRUE
+  ), colnames = c("Pathway", "Gene ratio",
+                 "Pval", "Padj", "Genes included"))
+  outputOptions(output, 'pathwayEnrichDT', suspendWhenHidden = FALSE)
+  observeEvent(pathwayEnrichDT(), {
+    pathwayEnrichDT_proxy <- dataTableProxy("pathwayEnrichDT", session = session,
+                                            deferUntilFlush = TRUE)
+    reloadData(pathwayEnrichDT_proxy)
+  })
   
 }
 

@@ -25,6 +25,7 @@ pool <- pool::dbPool(
   host="bishoplabdb.cyss3bq5juml.us-west-2.rds.amazonaws.com"
 )
 print("Pool connected")
+# lapply( DBI::dbListConnections( DBI::dbDriver( drv = "MySQL")), DBI::dbDisconnect)
 # pool::poolClose(pool)
 # on.exit({
 #   pool::poolClose(pool)
