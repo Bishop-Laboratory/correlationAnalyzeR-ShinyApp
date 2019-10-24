@@ -153,7 +153,7 @@ downloadDataUI <- function(id) {
   uiOutput(ns("downloadBox"))
 }
 
-downloadData <- function(input, output, session, 
+downloadData <- function(input, output, session, invalidater = FALSE,
                          primaryName, downloadsListReact) {
   
   downloadBoxUIReact <- reactive({
@@ -185,6 +185,10 @@ downloadData <- function(input, output, session,
       )
       return(downloadBoxUI)
     })
+    if (invalidater) {
+      # print("Downloads invalidating")
+      invalidateLater(250)
+    }
     downloadBoxUI
   })
   
@@ -377,7 +381,6 @@ singleModeAnalysis <- function(input, output, session,
     progress$set(message = "Validating inputs ... ", value = .1)
     # on.exit(progress$close())
     
-    print(primaryGene)
     cleanRes <- cleanInputs(primaryGene = primaryGene,
                             selectedSpecies = species,
                             sampleType = sampleType,
@@ -385,7 +388,6 @@ singleModeAnalysis <- function(input, output, session,
                             GlobalData = GlobalData,
                             session = session,
                             pool = pool)
-    print(cleanRes$primaryGene)
     
     if (input$crossComparisonMode) {
       progress$inc(.2, message = paste0("Starting group comparisons for ", 
@@ -544,13 +546,9 @@ singleModePlots <- function(input, output, session,
     primaryGene(dataList[["primaryGene"]])
     
     species(dataList[["species"]])
-    print(names(dataList))
     # Assign values in a group-specific manner
     if ("whichCompareGroups" %in% names(dataList)) {
-      print("inside group mode pre-processing")
       groupMode(TRUE)
-      print("In pre process -- checking chor")
-      print(correlations()[1:2, 1:2])
       whichCompareGroups(dataList[["whichCompareGroups"]])
       resList <- resList[[1]]
       correlations(resList[["correlations"]])
@@ -615,14 +613,10 @@ singleModePlots <- function(input, output, session,
                                           width = width,
                                           height = 500))
       heatMap(plt)
-      print("end of the heat processing in preprocesssss")
     } else {
-      print("inside non group mdoe preprocessing")
       # Assign normal-mode only values
       groupMode(FALSE)
       correlations(resList[["correlations"]])
-      print("In pre process -- checking chor")
-      print(correlations()[1:2, 1:2])
       sampleType(dataList[['sampleType']])
       tissueTypeRaw <- dataList[['tissueType']]
       tissueTypeRaw <- gsub(tissueTypeRaw, pattern = "0", replacement = " ")
@@ -669,17 +663,12 @@ singleModePlots <- function(input, output, session,
   
   # Render UI functions
   output$correlationsUI <- renderUI({
-    print("In render UI???")
     req(dataTables$singleModeData())
     req(! is.null(groupMode()))
-    print("In render UI")
     ns <- session$ns
     if (! groupMode()) {
-      print("In ! group mode for cor ui")
       req(! groupMode())
-      print("In ! group mode for cor ui")
       if(! isolate({corrReady()})) {
-        print("Still no cor -- invalid")
         invalidateLater(500)
       }
       tagList(
@@ -699,7 +688,6 @@ singleModePlots <- function(input, output, session,
       )
     } else {
       req(groupMode())
-      print("In group mode for cor ui")
       
       tagList(
         h1("Single Gene Results"),
@@ -736,6 +724,7 @@ singleModePlots <- function(input, output, session,
           )
         )
       } else {
+        invalidateLater(100)
         tagList(
           hr(),
           h4(em("Choose a 'corGSEA type' to analyze correlated pathways.")),
@@ -761,10 +750,8 @@ singleModePlots <- function(input, output, session,
     }
   })
   output$heatMap <- renderPlotly({
-    print("RENDER HEAT??")
     req(processed())
     req(groupMode())
-    print("In render plotly heat")
     heatMap()
   })
 
@@ -774,15 +761,10 @@ singleModePlots <- function(input, output, session,
   
   # Normal-mode UI elements
   output$correlationData <- DT::renderDataTable({
-    print("Data tale???")
     corrReady(TRUE)
-    print("Cor ready true now!! Godspeed")
     req((! groupMode()))
-    print("In cor data -- is cordata??")
     req(correlations())
-    print("In cor data -- is it processed?")
     req(processed())
-    print("In cor data")
     correlationData <- correlations()
     colnames(correlationData)[4] <- "vals"
     correlationData$geneName <- createGeneInfoLink(correlationData$geneName)
@@ -799,11 +781,8 @@ singleModePlots <- function(input, output, session,
     scrollX = TRUE),  colnames = c("Gene Name", 
                                    "Description", "Correlation Value"))
   geneHist <- reactive({
-    print("Gene HIST??")
     req((! groupMode()))
-    print("in gene hsit -- is process?")
     req(processed())
-    print("In gene hist")
     correlationData <- correlations()
     colnames(correlationData)[4] <- "vals"
     d2 <- correlationData[,c(1,3,4)]
@@ -825,16 +804,13 @@ singleModePlots <- function(input, output, session,
     }
   })
   output$geneHist <- renderPlot({
-    print("In render plot!")
     invalidateLater(5000)
     req(processed())
-    print("Invalidating")
     geneHist()
   })
   output$gseaData <- renderDataTable({
     req(eresCor())
     eres <- eresCor()
-    print("In gsea dt")
     eres <- eres[,c(2, 5, 6, 7)]
     eresTitles <- eres$Description
     eresTitles <- correlationAnalyzeR::fixStrings(eresTitles)
@@ -861,8 +837,6 @@ singleModePlots <- function(input, output, session,
     req(correlations())
     req(processed())
     req((! groupMode()))
-    print("in data table prox!!")
-    print(correlations()[1:2, 1:2])
     proxyCor <- dataTableProxy("correlationData")
     correlationData <- correlations()
     colnames(correlationData)[4] <- "vals"
@@ -872,9 +846,7 @@ singleModePlots <- function(input, output, session,
     d2 <- unique(d2)
     replaceData(proxyCor, d2, rownames = FALSE)
     selectRows(proxyCor, 1)
-    print("reloading")
     reloadData(proxyCor)
-    print("Reloaded proxy")
   })
   
   observe({
@@ -934,7 +906,6 @@ singleModePlots <- function(input, output, session,
     req(groupMode())
     req((! downloadsList$ready))
     req((! downloadsList$init))
-    print(correlations()[1:2, 1:2])
     downloadsList$init <- TRUE
     
     downloadsList[["correlationData"]] <- list("content" = correlations(),
@@ -1003,8 +974,15 @@ singleModePlots <- function(input, output, session,
     req(downloadsList$correlationData)
     req((! downloadsList$init))
     req(downloadsList$ready)
-    callModule(module = downloadData, id = "singleModeDownloads", 
-               primaryName = fileName(), downloadsListReact = downloadsList)
+    if (is.null(downloadsList$gseaData) & ! groupMode()) {
+      downloadsList2 <- reactiveValues(correlationData = downloadsList$correlationData)
+      callModule(module = downloadData, id = "singleModeDownloads", invalidater = TRUE,
+                 primaryName = fileName(), downloadsListReact = downloadsList2)
+    } else {
+      callModule(module = downloadData, id = "singleModeDownloads", 
+                 primaryName = fileName(), downloadsListReact = downloadsList)
+    }
+    
     print("End of single mode plots memory: ")
     print(pryr::mem_used())
     dataTables$singleModeData()$progress$close()
@@ -1145,7 +1123,6 @@ geneVsGeneModeAnalysis <- function(input, output, session,
   data <- reactiveVal()
   data <- eventReactive(eventExpr = input$do, {
     geneOne <- geneOne()
-    print(geneOne)
     shiny::validate(need(geneOne != "Loading ...", 
                          label = "Please select a gene one."))
     tissueTypeOne <- tissueTypeOne()
@@ -1205,7 +1182,6 @@ geneVsGeneModeAnalysis <- function(input, output, session,
     # sampleTypeTwo <- "normal"
     # species <- "Mouse"
     # gseaType <- "Simple"
-    print(geneOne)
     cleanResOne <- cleanInputs(primaryGene = geneOne,
                                selectedSpecies = species,
                                sampleType = sampleTypeOne,
@@ -1213,7 +1189,6 @@ geneVsGeneModeAnalysis <- function(input, output, session,
                                GlobalData = GlobalData,
                                session = session,
                                pool = pool)
-    print(geneTwo)
     cleanResTwo <- cleanInputs(primaryGene = geneTwo,
                                selectedSpecies = species,
                                sampleType = sampleTypeTwo,
@@ -1221,9 +1196,6 @@ geneVsGeneModeAnalysis <- function(input, output, session,
                                GlobalData = GlobalData,
                                session = session,
                                pool = pool)
-    str(cleanResOne)
-    print(cleanResOne$primaryGene)
-    print(cleanResTwo$primaryGene)
     genesOfInterest <- c(cleanResOne$primaryGene, cleanResTwo$primaryGene)
     
     if (input$crossComparisonMode) {
@@ -1282,7 +1254,6 @@ geneVsGeneModeAnalysis <- function(input, output, session,
       Sample_Type <- c(cleanResOne$sampleType, cleanResTwo$sampleType)
       Tissue <- c(cleanResOne$tissueType, cleanResTwo$tissueType)
       gseaType <- tolower(gseaType)
-      print(genesOfInterest)
       pairedRes <- correlationAnalyzeR::analyzeGenePairs(genesOfInterest = genesOfInterest, 
                                                          Sample_Type = Sample_Type,
                                                          Tissue = Tissue, 
@@ -1479,7 +1450,6 @@ geneVsGeneModePlots <- function(input, output, session,
       dataList$progress$inc(.4, message = "Returning results ... ")
       on.exit(dataList$progress$close())
       correlations(pairedRes[["processedCorrelationsFrame"]])
-      print(names(pairedRes))
       corrPlot(pairedRes[["compared"]][["correlationPlotBin"]])
       TPMData(pairedRes[["compared"]][["TPM_Data"]])
       geneTPMBoxplot1(pairedRes[["compared"]][["TPM_boxPlot"]])
@@ -1533,7 +1503,8 @@ geneVsGeneModePlots <- function(input, output, session,
       )
     } else {
       req((! groupMode()))
-      invalidateLater(1000)
+      # print("Invalidating gene vs gene")
+      invalidateLater(500)
       tagList(
         h1("Gene vs Gene Results"),
         br(),
@@ -1563,12 +1534,10 @@ geneVsGeneModePlots <- function(input, output, session,
     req(processed())
     ns <- session$ns
     if(! isolate({heatReady()})) {
-      print("Still no cor -- invalid")
       invalidateLater(500)
     }
     if (! groupMode()) {
       req((! groupMode()))
-      
       tagList(
         hr(),
         h2("Compared corGSEA results"),
@@ -1628,7 +1597,6 @@ geneVsGeneModePlots <- function(input, output, session,
   # Build shared UI elements
   output$geneTPMBoxplot1 <- renderPlot({
     req(geneTPMBoxplot1())
-    print("Rendinering TPM 1")
     heatReady(TRUE)
     geneTPMBoxplot1()
   })
@@ -1636,7 +1604,6 @@ geneVsGeneModePlots <- function(input, output, session,
   # Builg UI elements for group mode
   output$geneTPMBoxplot2 <- renderPlot({
     req(geneTPMBoxplot2())
-    print("Rendering ttpm2")
     geneTPMBoxplot2()
   })
   
@@ -1658,17 +1625,18 @@ geneVsGeneModePlots <- function(input, output, session,
   })
   output$corrScatter <- renderPlot({
     req((! groupMode()))
+    invalidateLater(1000)
     print(corrPlot())
     
   })
   output$heatGenesVar <- renderPlot({
     req(downloadsList$downloadDataTPM)
-    # invalidateLater(1000)
+    invalidateLater(1000)
     heatGenesVar()
   })
   output$heatGenesSim <- renderPlot({
     req(downloadsList$downloadDataTPM)
-    # invalidateLater(1000)
+    invalidateLater(1000)
     heatGenesSim()
   })
   
@@ -1679,6 +1647,7 @@ geneVsGeneModePlots <- function(input, output, session,
   
   output$heatPathsSim <- renderPlot({
     req((! groupMode()))
+    invalidateLater(1000)
     print(heatPathsSim())
   })
   
@@ -1769,9 +1738,13 @@ geneVsGeneModePlots <- function(input, output, session,
     req(downloadsList$downloadDataTPM)
     req((! downloadsList$init))
     req(downloadsList$ready)
-    print(uiName())
-    callModule(module = downloadData, id = "geneVsGeneModeDownloads",
-               primaryName = uiName(), downloadsListReact = downloadsList)
+    if (! groupMode()) {
+      callModule(module = downloadData, id = "geneVsGeneModeDownloads", invalidater = T,
+                 primaryName = uiName(), downloadsListReact = downloadsList)
+    } else {
+      callModule(module = downloadData, id = "geneVsGeneModeDownloads",
+                 primaryName = uiName(), downloadsListReact = downloadsList)
+    }
     print("End of gene vs gene plots memory: ")
     print(pryr::mem_used())
     processed(TRUE)
@@ -1986,11 +1959,9 @@ geneVsGeneListModePlots <- function(input, output, session,
     on.exit(progress$close())
     corrDataDF <- data$Correlation_histogram$data
     secondaryGenes(unique(corrDataDF$geneName[which(corrDataDF$secondaryGene)]))
-    print(secondaryGenes())
     corrDataDF <- corrDataDF[,c(1,2)]
     colnames(corrDataDF)[2] <- "Values"
     corrDataDF <- merge(x = corrDataDF, y = GeneInfo, all.x = T, by = "geneName")
-    print(colnames(corrDataDF))
     corrDataDF <- corrDataDF[,c(1, 4, 2)]
     corrDataDF <- corrDataDF[order(corrDataDF$Values, decreasing = T),]
     rownames(corrDataDF) <- NULL
@@ -2463,9 +2434,9 @@ topologyModePlots <- function(input, output, session,
     downloadsList[["correlationData"]] <- list(
       "content" = corrData,
       "file" = ".tsv",
-      "uiName" = paste0(strong("Correlations: "), gsub(uiName(), 
+      "uiName" = paste0(strong("Correlations: "), stringr::str_to_title(gsub(uiName(), 
                                                        pattern = "\\(|\\)", 
-                                                       replacement = ""))
+                                                       replacement = "")))
     )
     callModule(module = downloadData, id = "topologyModeDownloads", 
                primaryName = "topologyMode", downloadsListReact = downloadsList)
@@ -2505,7 +2476,6 @@ topologyModePlots <- function(input, output, session,
           dt_data <- dt_data[order(dt_data$clusters, -dt_data$PC1),]
           xaxistext <- dataRaw$PCA_plot$labels$x
           yaxistext <- dataRaw$PCA_plot$labels$y
-          print(colnames(dt_data))
           plt <- plot_ly(dt_data, x = ~PC1 , y = ~PC2, text = ~ geneName,
                          mode = "markers", color = ~clusters, marker = list(size = 7)) %>% 
             layout(title = "PCA with clustering",
@@ -2548,9 +2518,9 @@ topologyModePlots <- function(input, output, session,
       downloadsList[["dimReduceData"]] <- list(
         "content" = dt_data,
         "file" = ".tsv",
-        "uiName" = paste0(strong(paste0(dimMode(), " data: ")), gsub(uiName(), 
+        "uiName" = paste0(strong(paste0(dimMode(), " data: ")), stringr::str_to_title(gsub(uiName(), 
                                                                      pattern = "\\(|\\)", 
-                                                                     replacement = ""))
+                                                                     replacement = "")))
       )
       dt_data$geneName <- createGeneInfoLink(dt_data$geneName)
       
@@ -2577,9 +2547,9 @@ topologyModePlots <- function(input, output, session,
       downloadsList[["variantGenesHeatmapMatrix"]] <- list(
         "content" = ddata,
         "file" = ".tsv",
-        "uiName" = paste0(strong("Heatmap data: "), gsub(uiName(), 
+        "uiName" = paste0(strong("Heatmap data: "), stringr::str_to_title(gsub(uiName(), 
                                                          pattern = "\\(|\\)", 
-                                                         replacement = ""))
+                                                         replacement = "")))
       )
       showTab(inputId = "topologyNavs", 
               target = "varGenes", select = F,
@@ -2610,9 +2580,9 @@ topologyModePlots <- function(input, output, session,
       downloadsList[["pathwayEnrichmentData"]] <- list(
         "content" = as.data.frame(dataRaw$inputGenes_pathwayEnrich),
         "file" = ".tsv",
-        "uiName" = paste0(strong("Pathway enrichment: "), gsub(uiName(), 
+        "uiName" = paste0(strong("Pathway enrichment: "), stringr::str_to_title(gsub(uiName(), 
                                                                pattern = "\\(|\\)", 
-                                                               replacement = ""))
+                                                               replacement = "")))
       )
       showTab(inputId = "topologyNavs", 
               target = "pathwayEnrich", select = F,

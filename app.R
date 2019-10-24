@@ -1,7 +1,6 @@
 library(shiny)
 library(shinythemes)
 library(shinyjs)
-# Helper functions for shiny apps
 library(pryr)
 library(heatmaply)
 library(correlationAnalyzeR)
