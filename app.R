@@ -16,6 +16,11 @@ source("scripts/modules.R")
 source("scripts/helpers.R")
 load("data/GlobalData.RData")
 
+# Make sure tmp dir exists
+if (! dir.exists("www/tmp")) {
+  dir.create("www/tmp")
+}
+
 # Load connections
 pool <- pool::dbPool(
   drv = RMySQL::MySQL(),
