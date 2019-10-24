@@ -44,6 +44,10 @@ symbolConverter <- function(symbolVec, species, pool) {
   aliasSymbol <- DBI::dbGetQuery(dbCon, sqlQuery)
   aliasSymbol <- as.data.frame(aliasSymbol)
   avgenes <- correlationAnalyzeR::getAvailableGenes(Species = species, pool = pool)
+  if (is.null(avgenes)) {
+    stop("Unable to connect to database. Please contact package maintainer",
+         " if you believe this is in error. ")
+  }
   aliasSymbol <- aliasSymbol[which(aliasSymbol$symbol %in% avgenes),]
   
   unresolvableGenes <- c() # Cannot find any gene or alias matching this input
