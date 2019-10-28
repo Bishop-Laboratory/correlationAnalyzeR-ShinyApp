@@ -637,7 +637,7 @@ singleModePlots <- function(input, output, session,
                         ". corGSEA p value cutoff was raised to accommodate.")
           shiny::showNotification(ui = msg, type = "warning")
         }
-        eres <- eres[which(abs(eres[,5]) > 2),]
+        # eres <- eres[which(abs(eres[,5]) > 2),]
         eres <- eres[order(eres[,5], decreasing = T),]
         eresDownload(eres) # Set download eres value
         eres[,c(5,6,7)] <- apply(eres[,c(5,6,7)], 1:2, round, digits = 5)
@@ -893,11 +893,16 @@ singleModePlots <- function(input, output, session,
     colnames(corrDFNow2)[5] <- paste0(colnames(corrDFNow2)[5], "_correlation_value")
     eresCorDownload(corrDFNow2)
     # Return the plot
-    clusterProfiler::gseaplot(EGMT(), 
-                              geneSetID = id, 
-                              title = titleID)
+    plt <- clusterProfiler::gseaplot(EGMT(), 
+                                     geneSetID = id, 
+                                     title = titleID)
+    # Fix issue with plot margins cutting off the 30,000
+    if (species() == "Human") {
+      plt + theme(plot.margin = margin(t = 0, r = 20, b = 0, l = 0, unit = "pt"))
+    } else {
+      plt
+    }
   })
-  
   
   # Make downloads for group mode
   observe({
@@ -1504,7 +1509,7 @@ geneVsGeneModePlots <- function(input, output, session,
     } else {
       req((! groupMode()))
       # print("Invalidating gene vs gene")
-      invalidateLater(500)
+      invalidateLater(1000)
       tagList(
         h1("Gene vs Gene Results"),
         br(),

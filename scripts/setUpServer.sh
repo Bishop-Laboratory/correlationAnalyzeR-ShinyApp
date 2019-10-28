@@ -51,6 +51,8 @@ git clone $gitLink
 chmod 777 /srv/shiny-server/$appName
 cd $appName
 chmod 777 shiny-server.conf
+mkdir www/tmp
+chmod 777 www/tmp
 # Edit this document now based on https://towardsdatascience.com/how-to-host-a-r-shiny-app-on-aws-cloud-in-7-simple-steps-5595e7885722
 # Check your website to see if its working -- e.g. http://ec2-34-222-48-75.us-west-2.compute.amazonaws.com:3838/correlationAnalyzeR-ShinyApp/
 # If not working check the logs under /var/log/shiny-server/
