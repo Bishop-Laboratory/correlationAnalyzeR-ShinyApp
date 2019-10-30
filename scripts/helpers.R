@@ -27,10 +27,10 @@ createGSEAInfoLink <- function(val, valTitle) {
 symbolConverter <- function(symbolVec, species, pool) {
   # Provide a vector of gene symbols to check and convert
   
-  # # Bug testing
+  ## Bug testing
   # species <- "hsapiens"
   # symbolVec <- c("Asxl1", "CGAS", "RPA", "SON", "ASDJN", "NRF2", "DHX9", "SRSF2", "SF3B1")
-  # symbolVec <- selectedGenes
+  ## symbolVec <- selectedGenes
   
   n <- length(symbolVec)
   if (species == "mmusculus") {
@@ -50,12 +50,9 @@ symbolConverter <- function(symbolVec, species, pool) {
   }
   aliasSymbol <- aliasSymbol[which(aliasSymbol$symbol %in% avgenes),]
   
-  unresolvableGenes <- c() # Cannot find any gene or alias matching this input
-  confusedGenes <- list() # Input was an alias for which two valid gene symbols exists e.g. NRF2
-  resGenes <- c()
-  
-  for (i in 1:n) {
-    geneToCheck <- symbolVec[i]
+  checkTheGene <- function(geneToCheck, aliasSymbol) {
+    # symbolVec <- c("NFKB", "NRF2", "ASDNasd")
+    # geneToCheck <- symbolVec[i]
     # Check official symbols
     newGene <- aliasSymbol$symbol[grep(aliasSymbol$symbol, pattern = geneToCheck, ignore.case = T)][1]
     # Make sure length is matching for inclusion errors.  e.g. 'NRF2' returns 'LONRF2' erroneously
@@ -64,29 +61,67 @@ symbolConverter <- function(symbolVec, species, pool) {
     }
     if (is.na(newGene)) {
       # Check aliases
-      aliases <- aliasSymbol[grep(aliasSymbol$alias_symbol, pattern = geneToCheck, ignore.case = T),]
+      aliases <- aliasSymbol[grep(aliasSymbol$alias_symbol, 
+                                  pattern = geneToCheck,
+                                  ignore.case = T),]
       
       if (! length(aliases$alias_symbol)) {
-        unresolvableGenes <- c(unresolvableGenes, geneToCheck)
+        # unresolvableGenes <- c(unresolvableGenes, geneToCheck)
+        resDF <- data.frame("category" = rep("unresolvableGenes", length(geneToCheck)),
+                            "geneNames" = geneToCheck)
       } else {
         # Check for multimapped genes
-        aliases <- aliasSymbol[grep(aliasSymbol$alias_symbol, pattern = geneToCheck, ignore.case = T),]
+        aliases <- aliasSymbol[grep(aliasSymbol$alias_symbol,
+                                    pattern = geneToCheck, 
+                                    ignore.case = T),]
         aliases <- aliases[which(nchar(aliases$alias_symbol) == nchar(geneToCheck)),]
-        resGenes <- c(resGenes, unique(aliases$symbol))
+        # resGenes <- c(resGenes, unique(aliases$symbol))
         if (length(unique(aliases$symbol)) > 1) {
-          confusedGenes[[geneToCheck]] <- unique(aliases$symbol)
-          
+          resDF1 <- data.frame("category" = rep("multiMappedGenes", length(unique(aliases$symbol))),
+                              "geneNames" = unique(aliases$symbol))
+          resDF2 <- data.frame("category" = rep("resGenes", length(unique(aliases$symbol))),
+                               "geneNames" = unique(aliases$symbol))
+          resDF <- rbind(resDF1, resDF2)
+        } else {
+          resDF <- data.frame("category" = rep("resGenes", length(unique(aliases$symbol))),
+                              "geneNames" = unique(aliases$symbol))
         }
       }
     } else {
-      resGenes <- c(resGenes, newGene)
+      resDF <- data.frame("category" = rep("resGenes", length(newGene)),
+                          "geneNames" = newGene)
     }
+    return(resDF)
   }
-  resList <- list("unresolvableGenes" = unresolvableGenes, 
-                  "multiMappedGenes" = confusedGenes, 
-                  "resGenes" = resGenes)
+  if (length(symbolVec) > 1) {
+    resList <- future({
+      lapply(symbolVec, checkTheGene, aliasSymbol = aliasSymbol)
+    }, globals = list(symbolVec = symbolVec,
+                      checkTheGene = checkTheGene,
+                      aliasSymbol = aliasSymbol)) %...>%
+      (function(resList) {
+        resDF <- data.table::rbindlist(resList)
+        resList <- split(resDF, resDF$category)
+        resGenes <- as.character(resList$resGenes$geneNames)
+        confusedGenes <- as.character(resList$multiMappedGenes$geneNames)
+        unresolvableGenes <- as.character(resList$unresolvableGenes$geneNames)
+        resList <- list("unresolvableGenes" = unresolvableGenes, 
+                        "multiMappedGenes" = confusedGenes, 
+                        "resGenes" = resGenes)
+        resList
+      })
+  } else {
+    resList <- lapply(symbolVec, checkTheGene, aliasSymbol = aliasSymbol)
+    resDF <- data.table::rbindlist(resList)
+    resList <- split(resDF, resDF$category)
+    resGenes <- as.character(resList$resGenes$geneNames)
+    confusedGenes <- as.character(resList$multiMappedGenes$geneNames)
+    unresolvableGenes <- as.character(resList$unresolvableGenes$geneNames)
+    resList <- list("unresolvableGenes" = unresolvableGenes, 
+                    "multiMappedGenes" = confusedGenes, 
+                    "resGenes" = resGenes)
+  }
   return(resList)
-  
 }
 
 # Script to create the usable gene guide
@@ -140,9 +175,8 @@ cleanInputs <- function(primaryGene = NULL,
                         GlobalData,
                         session,
                         pool) {
-  # Get GlobalData inputs
-  HS_basicGeneInfo <- GlobalData$HS_basicGeneInfo
   MM_basicGeneInfo <- GlobalData$MM_basicGeneInfo
+  HS_basicGeneInfo <- GlobalData$HS_basicGeneInfo
   # Convert to correlationAnalyzeR inputs
   if (selectedSpecies == "Human") {
     selectedSpecies <- "hsapiens"
@@ -205,31 +239,32 @@ cleanInputs <- function(primaryGene = NULL,
       resList[['geneSetInputType']] <- F
       res <- symbolConverter(symbolVec = secondaryGenes, pool = pool,
                              species = selectedSpecies)
-      secondaryGenes <- NULL
-      
-      unresolvableGenes <- res$unresolvableGenes
-      if (length(unresolvableGenes)) {
-        msg <- paste0("Input list warning: '", paste0(unresolvableGenes, collapse = "', '"), 
-                      "' not found. Skipping...")
-        showNotification(id = "unresolvable-gene-warning", ui = msg, session = session,
-                         closeButton = T, type = "warning", duration = 8)
-      }
-      if (length(res$resGenes)) {
-        secondaryGenes <- res$resGenes
-        multiMappedGenes <- res$multiMappedGenes
-        if (length(multiMappedGenes)) {
-          for (i in 1:length(multiMappedGenes)) {
-            inputAlias <- names(multiMappedGenes)[i]
-            mappedSymbols <- multiMappedGenes[[i]]
-            msg <- paste0("Input '", inputAlias, 
-                          "' returned multiple official gene symbols: '",
-                          paste0(mappedSymbols, collapse = "', '"), 
-                          "'.")
-            showNotification(id = "multi-mapped-gene-warning", ui = msg, session = session,
-                             closeButton = T, type = "warning", duration = 8)
+      res %...>% (function(res) {
+        secondaryGenes <- NULL
+        unresolvableGenes <- res$unresolvableGenes
+        if (length(unresolvableGenes)) {
+          msg <- paste0("Input list warning: '", paste0(unresolvableGenes, collapse = "', '"), 
+                        "' not found. Skipping...")
+          showNotification(id = "unresolvable-gene-warning", ui = msg, session = session,
+                           closeButton = T, type = "warning", duration = 8)
+        }
+        if (length(res$resGenes)) {
+          secondaryGenes <- res$resGenes
+          multiMappedGenes <- res$multiMappedGenes
+          if (length(multiMappedGenes)) {
+            for (i in 1:length(multiMappedGenes)) {
+              inputAlias <- names(multiMappedGenes)[i]
+              mappedSymbols <- multiMappedGenes[[i]]
+              msg <- paste0("Input '", inputAlias, 
+                            "' returned multiple official gene symbols: '",
+                            paste0(mappedSymbols, collapse = "', '"), 
+                            "'.")
+              showNotification(id = "multi-mapped-gene-warning", ui = msg, session = session,
+                               closeButton = T, type = "warning", duration = 8)
+            }
           }
         }
-      }
+      })
     }
     resList[["secondaryGenes"]] <- secondaryGenes
     resList[["genesetInputs"]] <- genesetInputs

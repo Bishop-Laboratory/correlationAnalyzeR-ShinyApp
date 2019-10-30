@@ -56,8 +56,11 @@ save(mouseTissueOptions, file = "data/mouseTissueOptions.RData")
 #                                                                Species = "hsapiens")
 # mmusculus_complex_TERM2GENE <- correlationAnalyzeR::getTERM2GENE(GSEA_Type = "complex",
 #                                                                Species = "mmusculus")
-# save(hsapiens_simple_TERM2GENE, mmusculus_simple_TERM2GENE, 
-#      hsapiens_complex_TERM2GENE, mmusculus_complex_TERM2GENE,
+# TERM2GENEList <- list("complex" = list("hsapiens" = hsapiens_complex_TERM2GENE,
+#                                        "mmusculus" = mmusculus_complex_TERM2GENE),
+#                       "simple" = list("hsapiens" = hsapiens_simple_TERM2GENE,
+#                                       "mmusculus" = mmusculus_simple_TERM2GENE))
+# save(TERM2GENEList,
 #      file = "data/TERM2GENE_Objects.RData")
 
 # Load data for the global environment
@@ -81,7 +84,8 @@ GlobalData <- list("HS_basicGeneInfo" = HS_basicGeneInfo,
                    'humanGeneOptions' = humanGeneOptions,
                    'mouseGeneOptions' = mouseGeneOptions,
                    'humanTissueOptions' = humanTissueOptions,
-                   'mouseTissueOptions' = mouseTissueOptions)
+                   'mouseTissueOptions' = mouseTissueOptions,
+                   'TERM2GENEList' = TERM2GENEList)
 save(GlobalData, file = "data/GlobalData.RData")
 
 
