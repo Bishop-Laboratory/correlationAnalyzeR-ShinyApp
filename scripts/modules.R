@@ -400,13 +400,13 @@ singleModeAnalysis <- function(input, output, session,
         correlationAnalyzeR::analyzeSingleGenes(
           Species = cleanRes$selectedSpecies,
           runGSEA = F, crossCompareMode = T,
-          returnDataOnly = T, pool = pool,
+          returnDataOnly = T, pool = NULL,
           whichCompareGroups = tolower(whichCompareGroups),
           Sample_Type = cleanRes$sampleType,
           Tissue = cleanRes$tissueType,
           genesOfInterest = cleanRes$primaryGene
         )
-      }, globals = list(cleanRes = cleanRes, pool = pool, 
+      }, globals = list(cleanRes = cleanRes, pool = NULL, 
                      whichCompareGroups = whichCompareGroups)) %...>% 
         (function(resList) {
         data <- resList[[1]][["correlations"]]
@@ -453,7 +453,7 @@ singleModeAnalysis <- function(input, output, session,
                                                 # nperm = 500, sampler = T,
                                                 runGSEA = runGSEA, topPlots = F, returnDataOnly = T
         )
-      }, globals = list(pool = pool, TERM2GENE = TERM2GENE,
+      }, globals = list(pool = NULL, TERM2GENE = TERM2GENE,
                         gseaType = gseaType, runGSEA = runGSEA,
                         cleanRes = cleanRes)) %...>% (function(resList) {
                           progress$inc(.3, message = "Returning results ... ")
@@ -1307,7 +1307,7 @@ geneVsGeneModeAnalysis <- function(input, output, session,
         tmpscatterFile <- gsub(tmpscatterFileRaw, pattern = "www/", replacement = "")
         pairedRes[["tmpscatterFile"]] <- tmpscatterFile
         pairedRes
-      }, globals = list(pool = pool, tmp = tmp, uiNameNow = uiNameNow,
+      }, globals = list(pool = NULL, tmp = tmp, uiNameNow = uiNameNow,
                         genesOfInterest = genesOfInterest, 
                         cleanResOne = cleanResOne)) %...>%
         (function(pairedRes){
@@ -1357,9 +1357,10 @@ geneVsGeneModeAnalysis <- function(input, output, session,
                         Sample_Type = Sample_Type,
                         gseaType = gseaType,
                         cleanResOne = cleanResOne,
-                        pool = pool,
+                        pool = NULL,
                         TERM2GENE = TERM2GENE)) %...>%
         (function(pairedRes) {
+          print("Out of the main future!")
           dataOrig <- pairedRes$compared$correlations
           data <- cbind(rownames(dataOrig), dataOrig)
           colnames(data)[1] <- "geneName"
@@ -1379,7 +1380,7 @@ geneVsGeneModeAnalysis <- function(input, output, session,
                       "sampleTypeTwo" = sampleTypeTwo,
                       "tissueTypeTwo" = tissueTypeTwo,
                       "progress" = progress)
-          
+          print("Returning data from future!")
           res
         })
       res
@@ -1453,7 +1454,9 @@ geneVsGeneModePlots <- function(input, output, session,
 
   observeEvent(eventExpr = dataTables$geneVsGeneModeData(), {
     req(dataTables$geneVsGeneModeData())
+    print("In the plots!")
     dataTables$geneVsGeneModeData() %...>% (function(dataList) {
+      print("In the plots + future")
       preprocessed(FALSE)
       processed(FALSE)
       correlations(NULL)
@@ -1567,6 +1570,7 @@ geneVsGeneModePlots <- function(input, output, session,
                           tissueTypeTwo(), "-", sampleTypeTwo(), ")"))
         }
       }
+      print("Finished preprocessing")
       preprocessed(TRUE)
     })
   })
@@ -2013,7 +2017,7 @@ geneVsGeneListModeAnalysis <- function(input, output, session,
                                                  autoRug = T, plotTitle = F, onlyTop = F)
     }, globals = list(geneVsGeneListGenesList = geneVsGeneListGenesList,
                       cleanRes = cleanRes, sigTest = sigTest,
-                      pool = pool)) %...>%
+                      pool = NULL)) %...>%
       (function(data) {
         data <- data[[1]]
         res <- list("geneVsGeneListModeData" = data,
@@ -2441,7 +2445,7 @@ topologyModeAnalysis <- function(input, output, session,
                                                   Sample_Type = cleanRes$sampleType, 
                                                   Species = cleanRes$selectedSpecies)
     }, globals = list(cleanRes = cleanRes,
-                      pool = pool,
+                      pool = NULL,
                       crossComparisonType = crossComparisonType)) %...>%
       (function(data) {
         res <- list("topologyModeData" = data,
