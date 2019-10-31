@@ -18,7 +18,21 @@ options(future.globals.maxSize=1e9)
 source("scripts/modules.R")
 source("scripts/helpers.R")
 load("data/GlobalData.RData")
-plan(multiprocess, workers = 5)
+
+# Get hardware info for load monitoring
+if (Sys.info()[['sysname']] == "Windows") {
+  print("Windows OS detected!")
+  plan(multiprocess)
+  totalMemory <- as.numeric(gsub(system('wmic OS get TotalVisibleMemorySize /Value', intern = TRUE)[3], 
+                                 pattern = ".*=([0-9]+).*", replacement = "\\1"))
+} else if (Sys.info()[['sysname']] == "Linux") {
+  print("Linux OS detected!")
+  plan(multiprocess)
+  totalMemory <- benchmarkme::get_ram()
+}
+totalCores <- parallel::detectCores(logical = FALSE)
+totalThreads <- parallel::detectCores(logical = TRUE)
+
 # Make sure tmp dir exists
 if (! dir.exists("www/tmp")) {
   dir.create("www/tmp")
@@ -158,14 +172,71 @@ ui <- tagList(
         br(),
         includeHTML("www/FAQs.html")
       )
-    )
+    ),
+    tags$script(HTML(paste0("var header = $('.navbar > .container-fluid');
+ header.append('<div style=\"float:right; vertical-align: middle;\">", 
+                            "<p style = \"padding: 5px; margin: 12px; font-size: x-small;",
+                            "background-color: #f5f5f5; border: 1px solid #e3e3e3;",
+                            "border-radius: 4px; box-shadow: inset 0 1px 1px rgba(0,0,0,0.05); \">CPU free: ", 
+                            uiOutput("CPUHTML", inline = TRUE), " | Memory free: ", uiOutput("MEMHTML", inline = TRUE),
+                            "</p></div>');"
+    )))
   ),
+  # uiOutput("machineLoad"),
   br(),
   br()
 )
 
 
 server <- function(input, output, session) {
+  
+  # Print the current server workload to the user's screen
+  autoInvalidate <- reactiveTimer(30000)
+  workOut1 <- reactiveVal("0%")
+  workOut2 <- reactiveVal("0%")
+  output$CPUHTML <- renderUI({
+    workOut1()
+  })
+  output$MEMHTML <- renderUI({
+    workOut2()
+  })
+  observe({
+    # print("Getting machine load!")
+    if (Sys.info()[['sysname']] == "Windows") {
+      memfree <- as.numeric(gsub(system('wmic OS get FreePhysicalMemory /Value', intern = TRUE)[3], 
+                                 pattern = ".*=([0-9]+).*", replacement = "\\1"))
+      a <- system("wmic path Win32_PerfFormattedData_PerfProc_Process get Name,PercentProcessorTime", intern = TRUE)
+      df <- do.call(rbind, lapply(strsplit(a, " "), function(x) {x <- x[x != ""];data.frame(process = x[1], cpu = x[2])}))
+      cpuNow <- sum(as.numeric(as.character(df[grepl("Rgui|rstudio|R|rsession", df$process),2])), na.rm = TRUE)
+      cpuNow <- cpuNow/totalCores
+    } else if (Sys.info()[['sysname']] == "Linux") {
+      memfree <- as.numeric(system("awk '/MemFree/ {print $2}' /proc/meminfo", 
+                                   intern=TRUE))
+      # From this
+      splitted <- strsplit(system("ps -C R -o %cpu,%mem,pid,cmd", intern = TRUE), " ")
+      df <- do.call(rbind, lapply(splitted[-1], 
+                                  function(x) data.frame(
+                                    cpu = as.numeric(x[2]),
+                                    mem = as.numeric(x[4]),
+                                    pid = as.numeric(x[5]),
+                                    cmd = paste(x[-c(1:5)], collapse = " "))))
+      cpuNow <- (sum(as.numeric(as.character(df$cpu)), na.rm = TRUE)/totalCores)
+    }
+    cpuNow <- round(100-cpuNow)
+    memNow <- round((memfree/totalMemory) * 100)
+    # cpuNow <- round((as.numeric(future::availableCores()/parallel::detectCores())) * 100)
+    CpuColor <- ifelse(cpuNow < 25, yes = "red", no = 
+                         ifelse(cpuNow < 40, yes = "orange", no = "green"))
+    CPUHTML <- strong(span(paste0(cpuNow, "%"), style = paste0("color: ", CpuColor, ";")))
+    MemColor <- ifelse(memNow < 25, yes = "red", no = 
+                         ifelse(memNow < 35, yes = "orange", no = "green"))
+    MEMHTML <- strong(span(paste0(memNow, "%"), style = paste0("color: ", MemColor, ";")))
+    workOut1(CPUHTML)
+    workOut2(MEMHTML)
+    autoInvalidate()
+  }, priority = -1)
+  
+  
   
   # Make session-specific tmp dir. Delete once finished with session. 
   tmp <- paste0("www/tmp/", as.character(session$token)[1])
@@ -175,7 +246,7 @@ server <- function(input, output, session) {
     unlink(tmp, force = T, recursive = T)
   })
   
-
+  # Main analysis functions
   singleModeData <- reactiveValues(singleModeData = NULL)
   geneVsGeneModeData <- reactiveValues(geneVsGeneModeData = NULL)
   geneVsGeneListModeData <- reactiveValues(geneVsGeneListModeData = NULL)

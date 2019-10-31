@@ -424,7 +424,7 @@ singleModeAnalysis <- function(input, output, session,
                     "species" = species,
                     "gseaType" = gseaType,
                     "pval" = pval,
-                    "primaryGene" = primaryGene,
+                    "primaryGene" = cleanRes$primaryGene,
                     "sampleType" = sampleType,
                     "tissueType" = tissueType,
                     "progress" = progress,
@@ -435,9 +435,8 @@ singleModeAnalysis <- function(input, output, session,
       runGSEA <- ifelse(gseaType != "None", T, F)
       
       if (runGSEA) {
-        progress$inc(.1, message = paste0("Calculating corGSEA for ", 
+        progress$inc(.2, message = paste0("Calculating corGSEA for ", 
                                           primaryGene, " ... "))
-        progress$inc(.1, detail = "This may take ~1 minute.")
         TERM2GENE <- GlobalData$TERM2GENEList[[tolower(gseaType)]][[cleanRes$selectedSpecies]]
       } else {
         progress$inc(.1, message = paste0("Gathering correlations for ", 
@@ -457,7 +456,7 @@ singleModeAnalysis <- function(input, output, session,
       }, globals = list(pool = NULL, TERM2GENE = TERM2GENE,
                         gseaType = gseaType, runGSEA = runGSEA,
                         cleanRes = cleanRes)) %...>% (function(resList) {
-                          progress$inc(.3, detail = "Returning results.")
+                          progress$inc(.3, message = "Returning results ... ")
                           data <- resList[["correlations"]]
                           data <- cbind(rownames(data), data)
                           colnames(data)[1] <- "geneName"
@@ -475,7 +474,7 @@ singleModeAnalysis <- function(input, output, session,
                                       "species" = species,
                                       "gseaType" = gseaType,
                                       "pval" = pval,
-                                      "primaryGene" = primaryGene,
+                                      "primaryGene" = cleanRes$primaryGene,
                                       "sampleType" = sampleType,
                                       "tissueType" = tissueType,
                                       "progress" = progress)
@@ -869,15 +868,15 @@ singleModePlots <- function(input, output, session,
     req(processed())
     req((! groupMode()))
     proxyCor <- dataTableProxy("correlationData")
-    correlationData <- correlations()
-    colnames(correlationData)[4] <- "vals"
-    correlationData$geneName <- createGeneInfoLink(correlationData$geneName)
-    d2 <- correlationData
-    d2 <- d2[,c(1,3,4)]
-    d2 <- unique(d2)
-    replaceData(proxyCor, d2, rownames = FALSE)
-    selectRows(proxyCor, 1)
+    # correlationData <- correlations()
+    # colnames(correlationData)[4] <- "vals"
+    # correlationData$geneName <- createGeneInfoLink(correlationData$geneName)
+    # d2 <- correlationData
+    # d2 <- d2[,c(1,3,4)]
+    # d2 <- unique(d2)
+    # replaceData(proxyCor, d2, rownames = FALSE)
     reloadData(proxyCor)
+    selectRows(proxyCor, 1)
   })
   
   observe({
@@ -1315,7 +1314,6 @@ geneVsGeneModeAnalysis <- function(input, output, session,
           dataOrig <- pairedRes$Correlations
           data <- cbind(rownames(dataOrig), dataOrig)
           colnames(data)[1] <- "geneName"
-          # data <- data[which(data[,1] != cleanRes$primaryGene),]
           rownames(data) <- NULL
           data <- merge(x = cleanResOne$basicGeneInfo, y = data, by = "geneName")
           pairedRes[["Correlations"]] <- data
@@ -1323,10 +1321,10 @@ geneVsGeneModeAnalysis <- function(input, output, session,
                       "species" = species,
                       "gseaType" = gseaType,
                       "pval" = pval,
-                      "geneOne" = geneOne,
+                      "geneOne" = cleanResOne$primaryGene,
                       "sampleTypeOne" = sampleTypeOne,
                       "tissueTypeOne" = tissueTypeOne,
-                      "geneTwo" = geneTwo,
+                      "geneTwo" = cleanResTwo$primaryGene,
                       "sampleTypeTwo" = sampleTypeTwo,
                       "tissueTypeTwo" = tissueTypeTwo,
                       "crossCompareMode" = TRUE,
@@ -1336,9 +1334,8 @@ geneVsGeneModeAnalysis <- function(input, output, session,
         })
       res
     } else {
-      progress$inc(.1, message = paste0("Calculating corGSEA for ", geneOne,
+      progress$inc(.2, message = paste0("Calculating corGSEA for ", geneOne,
                                         " and ", geneTwo, " ... "))
-      progress$inc(.1, detail = paste("This may take 1-2 minutes to complete."))
       
       genesOfInterest <- c(cleanResOne$primaryGene, cleanResTwo$primaryGene)
       Sample_Type <- c(cleanResOne$sampleType, cleanResTwo$sampleType)
@@ -1375,10 +1372,10 @@ geneVsGeneModeAnalysis <- function(input, output, session,
                       "species" = species,
                       "gseaType" = gseaType,
                       "pval" = pval,
-                      "geneOne" = geneOne,
+                      "geneOne" = cleanResOne$primaryGene,
                       "sampleTypeOne" = sampleTypeOne,
                       "tissueTypeOne" = tissueTypeOne,
-                      "geneTwo" = geneTwo,
+                      "geneTwo" = cleanResTwo$primaryGene,
                       "sampleTypeTwo" = sampleTypeTwo,
                       "tissueTypeTwo" = tissueTypeTwo,
                       "progress" = progress)

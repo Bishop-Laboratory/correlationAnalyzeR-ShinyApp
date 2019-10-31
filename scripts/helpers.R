@@ -175,6 +175,15 @@ cleanInputs <- function(primaryGene = NULL,
                         GlobalData,
                         session,
                         pool) {
+  
+
+  # # # Bug testing
+  # primaryGene <- "Tp53bp2"
+  # selectedSpecies <- "Mouse"
+  # sampleType <- "normal"
+  # tissueType <- "all"
+  # secondaryGenes <- c("NRF2", "rif1", "atM", "xct", 'asdla', 'asdhsad', 'dfkjkn')
+    
   MM_basicGeneInfo <- GlobalData$MM_basicGeneInfo
   HS_basicGeneInfo <- GlobalData$HS_basicGeneInfo
   # Convert to correlationAnalyzeR inputs
@@ -198,10 +207,6 @@ cleanInputs <- function(primaryGene = NULL,
   resList[["basicGeneInfo"]] <- basicGeneInfo
   
   
-  # # Bug testing
-  # primaryGene <- "BRCA1"
-  # secondaryGenes <- c("NRF2", "rif1", "atM", "xct", 'asdla', 'asdhsad', 'dfkjkn')
-  
   # Validate primary gene
   if (! is.null(primaryGene)){
     # Handle bad gene name here
@@ -209,19 +214,19 @@ cleanInputs <- function(primaryGene = NULL,
                            species = selectedSpecies, pool = pool)
     unresolvableGenes <- res$unresolvableGenes
     if (length(res$resGenes)) {
-      primaryGene <- res$resGenes[1]
       multiMappedGenes <- res$multiMappedGenes
       if (length(multiMappedGenes)) {
-        inputAlias <- names(multiMappedGenes)[1]
-        mappedSymbols <- multiMappedGenes[[1]]
+        inputAlias <- primaryGene
+        mappedSymbols <- multiMappedGenes
         msg <- paste0("Input '", inputAlias, 
                       "' returned multiple official gene symbols: '",
                       paste0(mappedSymbols, collapse = "', '"), 
-                      "'. Only the first will be used, '", primaryGene, "'.")
+                      "'. Only the first will be used, '", res$resGenes[1], "'.")
         showNotification(id = "multi-mapped-gene-warning", ui = msg, session = session,
-                         closeButton = T, type = "warning", duration = 8)
+                         closeButton = T, type = "warning", duration = 10)
       }
-      resList[["primaryGene"]] <- primaryGene
+      primaryGeneNow <- res$resGenes[1]
+      resList[["primaryGene"]] <- primaryGeneNow
     }
   } 
   # Validate secondary genes
