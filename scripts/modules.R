@@ -1278,12 +1278,16 @@ geneVsGeneModeAnalysis <- function(input, output, session,
       } else {
         uiNameNow <- paste0(geneOne, " - normal vs. cancer")
       }
+      print("got the pairs! going to the future")
+      tmpscatterFileRaw <- file.path(tmp, paste0(uiNameNow, " scatterMap.pdf"))
+      tmpscatterFileRaw <- gsub(tmpscatterFileRaw, pattern = " ", replacement = "_")
+      
       res <- future({
         pairedRes <- correlationAnalyzeR::analyzeGenePairs(genesOfInterest = genesOfInterest, 
-                                                     Species = cleanResOne$selectedSpecies,
-                                                     returnDataOnly = T, runGSEA = F,
-                                                     # nperm = 500, sampler = TRUE,
-                                                     crossCompareMode = T, pool = pool)
+                                                           Species = cleanResOne$selectedSpecies,
+                                                           returnDataOnly = T, runGSEA = F,
+                                                           # nperm = 500, sampler = TRUE,
+                                                           crossCompareMode = T, pool = pool)
         # plotListHeat <- list()
         plotListScatter <- list()
         dataListNow <- pairedRes[["pairResList"]]
@@ -1298,17 +1302,18 @@ geneVsGeneModeAnalysis <- function(input, output, session,
         # tmpHeatFileRaw <- gsub(tmpHeatFileRaw, pattern = " ", replacement = "_")
         # ggplot2::ggsave(ge, filename = tmpHeatFileRaw, height = ht(), width = 40)
         # tmpHeatFile(gsub(tmpHeatFileRaw, pattern = "www/", replacement = ""))
-        tmpscatterFileRaw <- file.path(tmp, paste0(uiNameNow, " scatterMap.pdf"))
-        tmpscatterFileRaw <- gsub(tmpscatterFileRaw, pattern = " ", replacement = "_")
         ggpubr::ggexport(plotlist = plotListScatter, ncol = 4, 
                          filename = tmpscatterFileRaw, height = 5, width = 20)
-        tmpscatterFile <- gsub(tmpscatterFileRaw, pattern = "www/", replacement = "")
-        pairedRes[["tmpscatterFile"]] <- tmpscatterFile
         pairedRes
-      }, globals = list(pool = NULL, tmp = tmp, uiNameNow = uiNameNow,
-                        genesOfInterest = genesOfInterest, 
-                        cleanResOne = cleanResOne)) %...>%
+      }, globals = list(tmp = tmp, uiNameNow = uiNameNow,
+                        cleanResOne = cleanResOne,
+                        genesOfInterest = genesOfInterest,
+                        tmpscatterFileRaw = tmpscatterFileRaw,
+                        pool = NULL
+                        )) %...>%
         (function(pairedRes){
+          tmpscatterFile <- gsub(tmpscatterFileRaw, pattern = "www/", replacement = "")
+          pairedRes[["tmpscatterFile"]] <- tmpscatterFile
           dataOrig <- pairedRes$Correlations
           data <- cbind(rownames(dataOrig), dataOrig)
           colnames(data)[1] <- "geneName"
@@ -1509,7 +1514,8 @@ geneVsGeneModePlots <- function(input, output, session,
     req(dataTables$geneVsGeneModeData())
     print("In the plots!")
     future = FALSE # Massive memory leak with this mode for some reason...
-    if (future) {
+    print(class(dataTables$geneVsGeneModeData()))
+    if (class(dataTables$geneVsGeneModeData()) == "promise") {
       dataTables$geneVsGeneModeData() %...>% (function(dataList) {
         print("In the plots + future")
         preprocessed(FALSE)
