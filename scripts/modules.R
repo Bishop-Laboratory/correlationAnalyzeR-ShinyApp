@@ -406,8 +406,10 @@ singleModeAnalysis <- function(input, output, session,
           Tissue = cleanRes$tissueType,
           genesOfInterest = cleanRes$primaryGene
         )
-      }, globals = list(cleanRes = cleanRes, pool = NULL, 
-                     whichCompareGroups = whichCompareGroups)) %...>% 
+      }
+      # globals = list(cleanRes = cleanRes, pool = NULL, 
+      #                whichCompareGroups = whichCompareGroups)
+      ) %...>% 
         (function(resList) {
         data <- resList[[1]][["correlations"]]
         data$Variance <- matrixStats::rowVars(as.matrix(data))
@@ -453,9 +455,11 @@ singleModeAnalysis <- function(input, output, session,
                                                 # nperm = 500, sampler = T,
                                                 runGSEA = runGSEA, topPlots = F, returnDataOnly = T
         )
-      }, globals = list(pool = NULL, TERM2GENE = TERM2GENE,
-                        gseaType = gseaType, runGSEA = runGSEA,
-                        cleanRes = cleanRes)) %...>% (function(resList) {
+      }
+      # globals = list(pool = NULL, TERM2GENE = TERM2GENE,
+      #                   gseaType = gseaType, runGSEA = runGSEA,
+      #                   cleanRes = cleanRes)
+      ) %...>% (function(resList) {
                           progress$inc(.3, message = "Returning results ... ")
                           data <- resList[["correlations"]]
                           data <- cbind(rownames(data), data)
@@ -929,9 +933,11 @@ singleModePlots <- function(input, output, session,
       clusterProfiler::gseaplot(EGMTNow, 
                                 geneSetID = id, 
                                 title = titleID)
-    }, globals = list(EGMTNow = EGMTNow,
-                      id = id, 
-                      titleID = titleID)) %...>% (function(plt) {
+    }
+    # globals = list(EGMTNow = EGMTNow,
+    #                   id = id, 
+    #                   titleID = titleID)
+    ) %...>% (function(plt) {
       if (speciesNow == "Human") {
         plt + theme(plot.margin = margin(t = 0, 
                                          r = 20, 
@@ -1307,9 +1313,11 @@ geneVsGeneModeAnalysis <- function(input, output, session,
         tmpscatterFile <- gsub(tmpscatterFileRaw, pattern = "www/", replacement = "")
         pairedRes[["tmpscatterFile"]] <- tmpscatterFile
         pairedRes
-      }, globals = list(pool = NULL, tmp = tmp, uiNameNow = uiNameNow,
-                        genesOfInterest = genesOfInterest, 
-                        cleanResOne = cleanResOne)) %...>%
+      }
+      # globals = list(pool = NULL, tmp = tmp, uiNameNow = uiNameNow,
+      #                   genesOfInterest = genesOfInterest, 
+      #                   cleanResOne = cleanResOne)
+      ) %...>%
         (function(pairedRes){
           dataOrig <- pairedRes$Correlations
           data <- cbind(rownames(dataOrig), dataOrig)
@@ -1353,12 +1361,14 @@ geneVsGeneModeAnalysis <- function(input, output, session,
                                               topPlots = F, pool = pool,
                                               # nperm = 500, sampler = T,
                                               runGSEA = T)
-      }, globals = list(Tissue = Tissue, genesOfInterest = genesOfInterest,
-                        Sample_Type = Sample_Type,
-                        gseaType = gseaType,
-                        cleanResOne = cleanResOne,
-                        pool = NULL,
-                        TERM2GENE = TERM2GENE)) %...>%
+      } 
+      # globals = list(Tissue = Tissue, genesOfInterest = genesOfInterest,
+      #                   Sample_Type = Sample_Type,
+      #                   gseaType = gseaType,
+      #                   cleanResOne = cleanResOne,
+      #                   pool = NULL,
+      #                   TERM2GENE = TERM2GENE)
+                        ) %...>%
         (function(pairedRes) {
           dataOrig <- pairedRes$compared$correlations
           data <- cbind(rownames(dataOrig), dataOrig)
@@ -2011,9 +2021,11 @@ geneVsGeneListModeAnalysis <- function(input, output, session,
                                                  plotLabels = F, plotMaxMinCorr = T, 
                                                  sigTest = sigTest, returnDataOnly = T,
                                                  autoRug = T, plotTitle = F, onlyTop = F)
-    }, globals = list(geneVsGeneListGenesList = geneVsGeneListGenesList,
-                      cleanRes = cleanRes, sigTest = sigTest,
-                      pool = NULL)) %...>%
+    }
+    # globals = list(geneVsGeneListGenesList = geneVsGeneListGenesList,
+    #                   cleanRes = cleanRes, sigTest = sigTest,
+    #                   pool = NULL)
+    ) %...>%
       (function(data) {
         data <- data[[1]]
         res <- list("geneVsGeneListModeData" = data,
@@ -2440,9 +2452,11 @@ topologyModeAnalysis <- function(input, output, session,
                                                   crossComparisonType = crossComparisonType,
                                                   Sample_Type = cleanRes$sampleType, 
                                                   Species = cleanRes$selectedSpecies)
-    }, globals = list(cleanRes = cleanRes,
-                      pool = NULL,
-                      crossComparisonType = crossComparisonType)) %...>%
+    }
+    # globals = list(cleanRes = cleanRes,
+    #                   pool = NULL,
+    #                   crossComparisonType = crossComparisonType)
+    ) %...>%
       (function(data) {
         res <- list("topologyModeData" = data,
                     "species" = species,
