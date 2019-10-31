@@ -1175,8 +1175,6 @@ geneVsGeneModeAnalysis <- function(input, output, session,
   })
   
   
-  
-  data <- reactiveVal()
   data <- eventReactive(eventExpr = input$do, {
     geneOne <- geneOne()
     shiny::validate(need(geneOne != "Loading ...", 
@@ -1342,47 +1340,102 @@ geneVsGeneModeAnalysis <- function(input, output, session,
       Tissue <- c(cleanResOne$tissueType, cleanResTwo$tissueType)
       gseaType <- tolower(gseaType)
       TERM2GENE <- GlobalData$TERM2GENEList[[gseaType]][[cleanResOne$selectedSpecies]]
-      res <- future({
-        correlationAnalyzeR::analyzeGenePairs(genesOfInterest = genesOfInterest, 
-                                              Sample_Type = Sample_Type,
-                                              Tissue = Tissue, 
-                                              Species = cleanResOne$selectedSpecies,
-                                              GSEA_Type = gseaType, 
-                                              returnDataOnly = T,
-                                              TERM2GENE = TERM2GENE,
-                                              topPlots = F, pool = pool,
-                                              # nperm = 500, sampler = T,
-                                              runGSEA = T)
-      }, globals = list(Tissue = Tissue, genesOfInterest = genesOfInterest,
-                        Sample_Type = Sample_Type,
-                        gseaType = gseaType,
-                        cleanResOne = cleanResOne,
-                        pool = NULL,
-                        TERM2GENE = TERM2GENE)) %...>%
-        (function(pairedRes) {
-          print("Out of the main future!")
-          dataOrig <- pairedRes$compared$correlations
-          data <- cbind(rownames(dataOrig), dataOrig)
-          colnames(data)[1] <- "geneName"
-          # data <- data[which(data[,1] != cleanRes$primaryGene),]
-          rownames(data) <- NULL
-          data <- merge(x = cleanResOne$basicGeneInfo, y = data, by = "geneName")
-          colnames(data)[c(4:7)] <- colnames(dataOrig)
-          pairedRes[["processedCorrelationsFrame"]] <- data
-          res <- list("geneVsGeneResults" = pairedRes,
-                      "species" = species,
-                      "gseaType" = gseaType,
-                      "pval" = pval,
-                      "geneOne" = cleanResOne$primaryGene,
-                      "sampleTypeOne" = sampleTypeOne,
-                      "tissueTypeOne" = tissueTypeOne,
-                      "geneTwo" = cleanResTwo$primaryGene,
-                      "sampleTypeTwo" = sampleTypeTwo,
-                      "tissueTypeTwo" = tissueTypeTwo,
-                      "progress" = progress)
-          print("Returning data from future!")
-          res
-        })
+      
+      # # Bug test
+      # genesOfInterest = c("BRCA1", "TP53")
+      # Sample_Type = c("normal", "normal")
+      # Tissue = c("all", "all")
+      # cleanResOne <- list(selectedSpecies = "hsapiens",
+      #                     primaryGene = "BRCA1",
+      #                     basicGeneInfo = GlobalData$HS_basicGeneInfo)
+      # cleanResTwo <- list(primaryGene = "TP53")
+      # gseaType = "simple"
+      # TERM2GENE = correlationAnalyzeR::getTERM2GENE()
+      # pool = NULL
+      # species = "Human"
+      # pval = .05
+      # sampleTypeOne = "normal"
+      # sampleTypeTwo = "normal"
+      # tissueTypeOne = "all"
+      # tissueTypeTwo = "all"
+      # progress = NULL
+      
+      future = FALSE # for some reason this mode causes a massive memory leak in linux with future...
+      if (future) {
+        res <- future({
+          correlationAnalyzeR::analyzeGenePairs(genesOfInterest = genesOfInterest, 
+                                                Sample_Type = Sample_Type,
+                                                Tissue = Tissue, 
+                                                Species = cleanResOne$selectedSpecies,
+                                                GSEA_Type = gseaType, 
+                                                returnDataOnly = T,
+                                                TERM2GENE = TERM2GENE,
+                                                topPlots = F, pool = pool,
+                                                # nperm = 500, sampler = T,
+                                                runGSEA = T)
+        }, globals = list(Tissue = Tissue, genesOfInterest = genesOfInterest,
+                          Sample_Type = Sample_Type,
+                          gseaType = gseaType,
+                          cleanResOne = cleanResOne,
+                          pool = NULL,
+                          TERM2GENE = TERM2GENE)) %...>%
+          (function(pairedRes) {
+            print("Out of the main future!")
+            dataOrig <- pairedRes$compared$correlations
+            data <- cbind(rownames(dataOrig), dataOrig)
+            colnames(data)[1] <- "geneName"
+            # data <- data[which(data[,1] != cleanRes$primaryGene),]
+            rownames(data) <- NULL
+            data <- merge(x = cleanResOne$basicGeneInfo, y = data, by = "geneName")
+            colnames(data)[c(4:7)] <- colnames(dataOrig)
+            pairedRes[["processedCorrelationsFrame"]] <- data
+            res <- list("geneVsGeneResults" = pairedRes,
+                        "species" = species,
+                        "gseaType" = gseaType,
+                        "pval" = pval,
+                        "geneOne" = cleanResOne$primaryGene,
+                        "sampleTypeOne" = sampleTypeOne,
+                        "tissueTypeOne" = tissueTypeOne,
+                        "geneTwo" = cleanResTwo$primaryGene,
+                        "sampleTypeTwo" = sampleTypeTwo,
+                        "tissueTypeTwo" = tissueTypeTwo,
+                        "progress" = progress)
+            print("Returning data from future!")
+            res
+          })
+      } else {
+        pairedRes <- correlationAnalyzeR::analyzeGenePairs(genesOfInterest = genesOfInterest, 
+                                                           Sample_Type = Sample_Type,
+                                                           Tissue = Tissue, 
+                                                           Species = cleanResOne$selectedSpecies,
+                                                           GSEA_Type = gseaType, 
+                                                           returnDataOnly = T,
+                                                           TERM2GENE = TERM2GENE,
+                                                           topPlots = F, pool = pool,
+                                                           # nperm = 500, sampler = T,
+                                                           runGSEA = T)
+        print("Out of the main future!")
+        dataOrig <- pairedRes$compared$correlations
+        data <- cbind(rownames(dataOrig), dataOrig)
+        colnames(data)[1] <- "geneName"
+        # data <- data[which(data[,1] != cleanRes$primaryGene),]
+        rownames(data) <- NULL
+        data <- merge(x = cleanResOne$basicGeneInfo, y = data, by = "geneName")
+        colnames(data)[c(4:7)] <- colnames(dataOrig)
+        pairedRes[["processedCorrelationsFrame"]] <- data
+        res <- list("geneVsGeneResults" = pairedRes,
+                    "species" = species,
+                    "gseaType" = gseaType,
+                    "pval" = pval,
+                    "geneOne" = cleanResOne$primaryGene,
+                    "sampleTypeOne" = sampleTypeOne,
+                    "tissueTypeOne" = tissueTypeOne,
+                    "geneTwo" = cleanResTwo$primaryGene,
+                    "sampleTypeTwo" = sampleTypeTwo,
+                    "tissueTypeTwo" = tissueTypeTwo,
+                    "progress" = progress)
+        print("Returning data from future!")
+      }
       res
     }
   })
@@ -1455,8 +1508,129 @@ geneVsGeneModePlots <- function(input, output, session,
   observeEvent(eventExpr = dataTables$geneVsGeneModeData(), {
     req(dataTables$geneVsGeneModeData())
     print("In the plots!")
-    dataTables$geneVsGeneModeData() %...>% (function(dataList) {
-      print("In the plots + future")
+    future = FALSE # Massive memory leak with this mode for some reason...
+    if (future) {
+      dataTables$geneVsGeneModeData() %...>% (function(dataList) {
+        print("In the plots + future")
+        preprocessed(FALSE)
+        processed(FALSE)
+        correlations(NULL)
+        correlatedPathwaysDF(NULL)
+        corrPlot(NULL)
+        heatReady(FALSE)
+        heatPathsVar(NULL)
+        heatPathsSim(NULL)
+        uiName(NULL)
+        timerStart(Sys.time())
+        timerNow(0)
+        tenSec(FALSE)
+        
+        downloadsList$init <- FALSE
+        downloadsList$ready <- FALSE
+        downloadsList$downloadDataPairsPath <- NULL
+        downloadsList$correlationData <- NULL
+        downloadsList$downloadDataTPM <- NULL
+        pairedRes <- dataList[["geneVsGeneResults"]]
+        species(dataList[["species"]])
+        geneOne(dataList[["geneOne"]])
+        tissueTypeOne(gsub(dataList[["tissueTypeOne"]],
+                           pattern = "0", replacement = " "))
+        sampleTypeOne(dataList[["sampleTypeOne"]])
+        geneTwo(dataList[["geneTwo"]])
+        tissueTypeTwo(gsub(dataList[["tissueTypeTwo"]],
+                           pattern = "0", replacement = " "))
+        sampleTypeTwo(dataList[["sampleTypeTwo"]])
+        if ("crossCompareMode" %in% names(dataList)) {
+          groupMode(TRUE)
+          correlations(pairedRes[["Correlations"]])
+          tmpscatterFile(pairedRes[["tmpscatterFile"]])
+          dataList$progress$inc(
+            .4,
+            message = "Preparing group mode result files ... ")
+          on.exit(dataList$progress$close())
+          dataListNow <- pairedRes[["pairResList"]]
+          whichCompareGroups(pairedRes[["mode"]])
+          if (pairedRes[["mode"]] == "cross_geneVsGene") {
+            uiName(paste0(geneOne(), " vs ", geneTwo()))
+            ht(30)
+          } else {
+            uiName(paste0(geneOne(), " - normal vs. cancer"))
+            ht(14)
+          }
+          # Get TPM
+          geneTPMData(pairedRes$crossCompareTPM[["TPM_DF"]])
+          if (whichCompareGroups() == "cross_geneVsGene") {
+            geneTPMBoxplot1(pairedRes$crossCompareTPM[["TPM_boxPlotOne"]])
+            geneTPMBoxplot2(pairedRes$crossCompareTPM[["TPM_boxPlotTwo"]])
+          } else {
+            geneTPMBoxplot1(pairedRes$crossCompareTPM[["TPM_boxPlot"]])
+            geneTPMBoxplot2(NULL)
+          }
+        } else {
+          groupMode(FALSE)
+          uiNameOne(paste0(geneOne(), " (",
+                           tissueTypeOne(), " - ",
+                           sampleTypeOne(), ")"))
+          fileNameOne(paste0(geneOne(), "_",
+                             tissueTypeOne(), "_",
+                             sampleTypeOne()))
+          uiNameTwo(paste0(geneTwo(), " (",
+                           tissueTypeTwo(), " - ",
+                           sampleTypeTwo(), ")"))
+          fileNameTwo(paste0(geneTwo(), "_",
+                             tissueTypeTwo(), "_",
+                             sampleTypeTwo()))
+          longName <- ifelse((tissueTypeOne() != tissueTypeTwo() | 
+                                sampleTypeOne() != sampleTypeTwo()),
+                             yes = T, no = F)
+          if (longName) {
+            uiName(paste0(uiNameOne(), " vs ", uiNameTwo()))
+            fileName(paste0(fileNameOne(), "_vs_", fileNameTwo()))
+          } else {
+            uiName(paste0(geneOne(), " vs ", geneTwo(), "(",
+                          tissueTypeTwo(), " - ",
+                          sampleTypeTwo(), ")"))
+            fileName(paste0(geneOne(), "_vs_", geneTwo(), "_",
+                            tissueTypeTwo(), "_",
+                            sampleTypeTwo()))
+          }
+          dataList$progress$inc(.4, message = "Returning results ... ")
+          on.exit(dataList$progress$close())
+          correlations(pairedRes[["processedCorrelationsFrame"]])
+          corrPlot(pairedRes[["compared"]][["correlationPlotBin"]])
+          TPMData(pairedRes[["compared"]][["TPM_Data"]])
+          geneTPMBoxplot1(pairedRes[["compared"]][["TPM_boxPlot"]])
+          geneTPMBoxplot2(NULL)
+          heatGenesVar(pairedRes[["compared"]][["correlationVarianceHeatmap"]])
+          heatGenesSim(pairedRes[["compared"]][["correlationSimilarityHeatmap"]])
+          heatPathsVar(pairedRes[["compared"]][["pathwayVarianceHeatmap"]])
+          heatPathsSim(pairedRes[["compared"]][["pathwaySimilarityHeatmap"]])
+          correlatedPathwaysDT <- pairedRes[["compared"]][[
+            "correlatedPathwaysDataFrame"]][,c(1, 2, 6, 10, 11)]
+          correlatedPathwaysDT <- correlatedPathwaysDT[order(correlatedPathwaysDT$NES_variance, 
+                                                             decreasing = T),]
+          colnames(correlatedPathwaysDT)[1] <- c("Pathway")
+          rownames(correlatedPathwaysDT) <- NULL
+          correlatedPathwaysDF(correlatedPathwaysDT)
+          if (species() == "Human") {
+            GeneInfo <- GlobalData$HS_basicGeneInfo
+          } else {
+            GeneInfo <- GlobalData$MM_basicGeneInfo
+          }
+          
+          if (geneOne() != geneTwo()) {
+            specName(paste0(geneOne(), " vs ", geneTwo()))
+          } else {
+            specName(paste0(geneOne(), " (", tissueTypeOne(), "-", sampleTypeOne(), " vs ",
+                            tissueTypeTwo(), "-", sampleTypeTwo(), ")"))
+          }
+        }
+        print("Finished pr")
+        preprocessed(TRUE)
+      })
+    } else {
+      dataList <- dataTables$geneVsGeneModeData()
+      print("In the plots + NO future")
       preprocessed(FALSE)
       processed(FALSE)
       correlations(NULL)
@@ -1570,9 +1744,9 @@ geneVsGeneModePlots <- function(input, output, session,
                           tissueTypeTwo(), "-", sampleTypeTwo(), ")"))
         }
       }
-      print("Finished preprocessing")
+      print("Finished pr")
       preprocessed(TRUE)
-    })
+    }
   })
   
   # Render UI
@@ -1874,7 +2048,7 @@ geneVsGeneModePlots <- function(input, output, session,
     req(preprocessed())
     diff <- Sys.time() - timerStart()
     timerNow(diff[[1]])
-    if (timerNow() < 5) {
+    if (timerNow() < 3) {
       invalidateLater(1000)
     } else {
       tenSec(TRUE)
