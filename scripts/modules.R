@@ -1946,6 +1946,9 @@ geneVsGeneModePlots <- function(input, output, session,
   })
   
   output$heatPathsSim <- renderPlot({
+    if (! tenSec()) {
+      invalidateLater(1000)
+    }
     req((! groupMode()))
     print(heatPathsSim())
   })

@@ -191,7 +191,7 @@ ui <- tagList(
 server <- function(input, output, session) {
   
   # Print the current server workload to the user's screen
-  autoInvalidate <- reactiveTimer(30000)
+  autoInvalidate <- reactiveTimer(10000)
   workOut1 <- reactiveVal("0%")
   workOut2 <- reactiveVal("0%")
   output$CPUHTML <- renderUI({

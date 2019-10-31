@@ -248,7 +248,7 @@ cleanInputs <- function(primaryGene = NULL,
         secondaryGenes <- NULL
         unresolvableGenes <- res$unresolvableGenes
         if (length(unresolvableGenes)) {
-          msg <- paste0("Input list warning: '", paste0(unresolvableGenes, collapse = "', '"), 
+          msg <- paste0("Input list warning: '", paste0(unique(unresolvableGenes), collapse = "', '"), 
                         "' not found. Skipping...")
           showNotification(id = "unresolvable-gene-warning", ui = msg, session = session,
                            closeButton = T, type = "warning", duration = 8)
