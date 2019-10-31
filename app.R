@@ -209,27 +209,24 @@ server <- function(input, output, session) {
       df <- do.call(rbind, lapply(strsplit(a, " "), function(x) {x <- x[x != ""];data.frame(process = x[1], cpu = x[2])}))
       cpuNow <- sum(as.numeric(as.character(df[grepl("Rgui|rstudio|R|rsession", df$process),2])), na.rm = TRUE)
       cpuNow <- cpuNow/totalCores
+      memNow <- round((memfree/totalMemory) * 100)
     } else if (Sys.info()[['sysname']] == "Linux") {
-      memfree <- as.numeric(system("awk '/MemFree/ {print $2}' /proc/meminfo", 
-                                   intern=TRUE))
+      memfree <- (as.numeric(system("awk '/MemFree/ {print $2}' /proc/meminfo", 
+                                   intern=TRUE))/1000000000)
       # From this
-      splitted <- strsplit(system("ps -C R -o %cpu,%mem,pid,cmd", intern = TRUE), " ")
-      df <- do.call(rbind, lapply(splitted[-1], 
-                                  function(x) data.frame(
-                                    cpu = as.numeric(x[2]),
-                                    mem = as.numeric(x[4]),
-                                    pid = as.numeric(x[5]),
-                                    cmd = paste(x[-c(1:5)], collapse = " "))))
-      cpuNow <- (sum(as.numeric(as.character(df$cpu)), na.rm = TRUE)/totalCores)
+      cpuNow <- system("ps -C R -o %cpu", intern = TRUE)
+      cpuNow <- (sum(as.numeric(gsub(cpuNow[c(-1)], pattern = " ", replacement = "")))/totalCores)
+      memNow <- system("ps -C R -o %mem", intern = TRUE)
+      memNow <- sum(as.numeric(gsub(memNow[c(-1)], pattern = " ", replacement = "")))
+      memNow <- round(100-memNow)
     }
     cpuNow <- round(100-cpuNow)
-    memNow <- round((memfree/totalMemory) * 100)
     # cpuNow <- round((as.numeric(future::availableCores()/parallel::detectCores())) * 100)
     CpuColor <- ifelse(cpuNow < 25, yes = "red", no = 
                          ifelse(cpuNow < 40, yes = "orange", no = "green"))
     CPUHTML <- strong(span(paste0(cpuNow, "%"), style = paste0("color: ", CpuColor, ";")))
     MemColor <- ifelse(memNow < 25, yes = "red", no = 
-                         ifelse(memNow < 35, yes = "orange", no = "green"))
+                         ifelse(memNow < 40, yes = "orange", no = "green"))
     MEMHTML <- strong(span(paste0(memNow, "%"), style = paste0("color: ", MemColor, ";")))
     workOut1(CPUHTML)
     workOut2(MEMHTML)
