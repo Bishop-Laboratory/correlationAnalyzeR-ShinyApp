@@ -257,16 +257,10 @@ cleanInputs <- function(primaryGene = NULL,
           secondaryGenes <- res$resGenes
           multiMappedGenes <- res$multiMappedGenes
           if (length(multiMappedGenes)) {
-            for (i in 1:length(multiMappedGenes)) {
-              inputAlias <- names(multiMappedGenes)[i]
-              mappedSymbols <- multiMappedGenes[[i]]
-              msg <- paste0("Input '", inputAlias, 
-                            "' returned multiple official gene symbols: '",
-                            paste0(mappedSymbols, collapse = "', '"), 
-                            "'.")
-              showNotification(id = "multi-mapped-gene-warning", ui = msg, session = session,
-                               closeButton = T, type = "warning", duration = 8)
-            }
+            msg <- paste0("Input '", paste0(multiMappedGenes, collapse = ", "), 
+                          "' returned multiple official gene symbols.")
+            showNotification(id = "multi-mapped-gene-warning", ui = msg, session = session,
+                             closeButton = T, type = "warning", duration = 8)
           }
         }
       })

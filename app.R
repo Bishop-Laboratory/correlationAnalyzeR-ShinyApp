@@ -19,14 +19,15 @@ source("scripts/modules.R")
 source("scripts/helpers.R")
 load("data/GlobalData.RData")
 
-plan(multiprocess, gc = TRUE)
 # Get hardware info for load monitoring
 if (Sys.info()[['sysname']] == "Windows") {
   print("Windows OS detected!")
+  plan(multiprocess, workers = 4, gc = TRUE)
   totalMemory <- as.numeric(gsub(system('wmic OS get TotalVisibleMemorySize /Value', intern = TRUE)[3], 
                                  pattern = ".*=([0-9]+).*", replacement = "\\1"))
 } else if (Sys.info()[['sysname']] == "Linux") {
   print("Linux OS detected!")
+  plan(multiprocess, gc = TRUE)
   totalMemory <- benchmarkme::get_ram()
   print(totalMemory)
 }

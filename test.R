@@ -1,11 +1,11 @@
 library(profvis)
 library(shiny)
 # getCorrelationData(geneList = "ATM", Sample_Type = "Normal_Tissues", Species = "hsapiens")
-# options(shiny.reactlog=TRUE)
+# options(shiny.reactlog=FALSE)
 
-# runApp(display.mode = "normal", port = 80, 
-#        host = "0.0.0.0", launch.browser = FALSE)
-runApp(launch.browser = TRUE)
+runApp(display.mode = "normal", port = 80,
+       host = "0.0.0.0", launch.browser = FALSE)
+# runApp(launch.browser = TRUE)
 
 
 # resList <- correlationAnalyzeR::analyzeSingleGenes(genesOfInterest = c("Atm"), Species = "mmusculus",

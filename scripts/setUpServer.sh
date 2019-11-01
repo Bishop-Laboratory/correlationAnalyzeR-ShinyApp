@@ -18,7 +18,7 @@ apt-get -y install libmariadbclient-dev
 apt-get -y install libssl-dev
 apt-get -y install libcurl4-openssl-dev
 apt-get -y install libxml2-dev
-R -e "install.packages(c('shinyjs','shiny','shinydashboard','shinythemes','devtools','shinyWidgets','plotly','heatmaply','ggpubr','ggplot2','Rtsne','ggrepel','ggplot2', 'DT', 'gplots', 'data.table', 'BiocManager', 'DBI', 'RMySQL','pheatmap','SuperExactTest'), repos = 'http://cran.rstudio.com/')"
+R -e "install.packages(c('shinyjs','shiny','shinydashboard','shinythemes','devtools','shinyWidgets','plotly','heatmaply','ggpubr','ggplot2','Rtsne','ggrepel','ggplot2', 'DT', 'gplots', 'data.table', 'BiocManager', 'DBI', 'RMySQL','pheatmap','SuperExactTest', 'pryr', 'pool', 'shinyBS', 'future', 'promises', 'benchmarkme'), repos = 'http://cran.rstudio.com/')"
 R -e "BiocManager::install(c('org.Mm.eg.db', 'org.Hs.eg.db','clusterProfiler','limma', 'preprocessCore'))"
 R -e "install.packages('metaMA', repos = 'http://cran.rstudio.com/')"
 R -e "devtools::install_github('nik01010/dashboardthemes')"
@@ -27,13 +27,13 @@ R -e "devtools::install_github('millerh1/correlationAnalyzeR')"
 
 # Set up shiny server
 R -e "install.packages('shiny', repos = 'http://cran.rstudio.com/')"
-apt-get -y install gdebi-core
-wget https://download3.rstudio.org/ubuntu-14.04/x86_64/shiny-server-1.5.9.923-amd64.deb
-gdebi shiny-server-1.5.9.923-amd64.deb
+#apt-get -y install gdebi-core
+#wget https://download3.rstudio.org/ubuntu-14.04/x86_64/shiny-server-1.5.9.923-amd64.deb
+#gdebi shiny-server-1.5.9.923-amd64.deb
 
 # Get Rstudio for debugging
-wget https://download1.rstudio.org/desktop/bionic/amd64/rstudio-1.2.1335-amd64.deb
-gdebi rstudio-1.2.1335-amd64.deb
+#wget https://download1.rstudio.org/desktop/bionic/amd64/rstudio-1.2.1335-amd64.deb
+#gdebi rstudio-1.2.1335-amd64.deb
 apt -y install libnss3
 apt-get -y install libasound2
 apt-get -y install libglfw3-dev libgles2-mesa-dev
@@ -43,14 +43,15 @@ apt-get -y install libxkbcommon-x11-dev
 # Configure shiny server
 appName="correlationAnalyzeR-ShinyApp" # Needs to be same as github repo
 gitLink="https://github.com/millerh1/correlationAnalyzeR-ShinyApp.git"
-chmod 777 /srv/shiny-server
-chmod 777 /etc/shiny-server
-cd /srv/shiny-server
-rm -rf sample-apps
+#chmod 777 /srv/shiny-server
+#chmod 777 /etc/shiny-server
+#cd /srv/shiny-server
+#rm -rf sample-apps
 git clone $gitLink
-chmod 777 /srv/shiny-server/$appName
+#chmod 777 /srv/shiny-server/$appName
+chmod 777 $appName
 cd $appName
-chmod 777 shiny-server.conf
+#chmod 777 shiny-server.conf
 mkdir www/tmp
 chmod 777 www/tmp
 # Edit this document now based on https://towardsdatascience.com/how-to-host-a-r-shiny-app-on-aws-cloud-in-7-simple-steps-5595e7885722
