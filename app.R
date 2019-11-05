@@ -22,7 +22,8 @@ load("data/GlobalData.RData")
 # Get hardware info for load monitoring
 if (Sys.info()[['sysname']] == "Windows") {
   print("Windows OS detected!")
-  plan(multiprocess, workers = 4, gc = TRUE)
+  # plan(multiprocess, workers = 4, gc = TRUE)
+  plan(sequential)
   totalMemory <- as.numeric(gsub(system('wmic OS get TotalVisibleMemorySize /Value', intern = TRUE)[3], 
                                  pattern = ".*=([0-9]+).*", replacement = "\\1"))
 } else if (Sys.info()[['sysname']] == "Linux") {

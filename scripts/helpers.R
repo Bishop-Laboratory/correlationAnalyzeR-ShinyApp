@@ -23,6 +23,29 @@ createGSEAInfoLink <- function(val, valTitle) {
   sprintf(paste0('<a href="http://software.broadinstitute.org/gsea/msigdb/cards/', val,'" id="', val ,'" target="_blank" class="tooltip-test" onClick="gsea_click(this.id)" title="', val, '">', valTitle, '</a>'))
 }
 
+# Pretty pathEnrich plot
+prettyPathEnrich <- function(eres) {
+  eres$GeneRatio <- sapply(eres$GeneRatio, function(x) eval(parse(text=x)))
+  eresTitles <- eres$Description
+  eresTitles <- correlationAnalyzeR::fixStrings(eresTitles)
+  eresTitles[which(nchar(eresTitles) > 45)] <- paste0(
+    substr(eresTitles[which(nchar(eresTitles) > 45)], 1, 41), "..."
+  )
+  eres$Description <- eresTitles
+  eres$p.adjust <- -log10(eres$p.adjust)
+  eres <- eres[order(eres$GeneRatio, decreasing = TRUE),]
+  eres <- eres[c(1:12),]
+  order <- rev(eres$Description)
+  bp <- ggpubr::ggbarplot(data = eres, x = "Description",
+                          y = "GeneRatio", ylab = "\nGene Ratio",
+                          fill = "p.adjust", order = order,
+                          legend.title = "-log10(pAdj)",
+                          legend = "right") +
+    ggpubr::rremove("ylab") +
+    ggpubr::rotate() 
+  return(bp)
+}
+
 # Function to convert a vector of old gene symbols to new ones
 symbolConverter <- function(symbolVec, species, pool) {
   # Provide a vector of gene symbols to check and convert

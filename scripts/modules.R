@@ -259,6 +259,205 @@ downloadData <- function(input, output, session, invalidater = FALSE,
   
 }
 
+# Pathway enrich module
+pathwayEnrichUI <- function(id, toolLabel = NULL) {
+  ns <- NS(id)
+  if (! is.null(toolLabel)) {
+    shinyBS::tipify(actionButton(ns("openModalBtn"), "Send to PathEnrich"), title = toolLabel)
+  } else {
+    actionButton(ns("openModalBtn"), "Open PathEnrich")
+  }
+}
+pathwayEnrich <- function(input, output, session, 
+                          clearModal = FALSE,
+                          geneList = NULL, 
+                          TERM2GENEList = NULL,
+                          uiLabel = NULL) {
+  
+  go <- reactiveVal()
+  initialized <- reactiveVal()
+  uiLabelNow <- reactiveVal()
+  processed <- reactiveVal()
+  
+  observe({
+    print(input$openModalBtn)
+    print("Modal button observer")
+  })
+  
+  go <- reactive({
+    isolate({input$openModalBtn})
+  })
+  
+  observe({
+    print(go())
+    print("Go observer")
+  })
+  
+  if (clearModal) {
+    print("Clearin modal!")
+    removeModal(session = session)
+    initialized(FALSE)
+  } else {
+    print("New modal!!")
+    observeEvent(input$openModalBtn, {
+      print(input$openModalBtn)
+      uiLabelNow(NULL)
+      print(uiLabel())
+      ns <- session$ns
+      req(! is.null(geneList))
+      req(! is.null(TERM2GENEList))
+      print(input$openModalBtn)
+      print("Observed modal!")
+      initialized(FALSE)
+      showModal(ui = shiny::modalDialog(size = "l", {
+        tagList(
+          fluidPage(
+            fluidRow(
+              column(width = 4, #offset = 4,
+                     tagList(
+                       radioButtons(
+                         inputId = ns("chooseEnrichType"),
+                         choices = c("Simple", "Complex"), 
+                         selected = "Simple", inline = TRUE,
+                         label = "Pathway type"),
+                       br(),
+                       actionButton(
+                         inputId = ns("runPathEnrich"), label = "Analyze")
+                     )
+              )
+            ),
+            br(),
+            fluidRow(
+              column(width = 12,
+                     uiOutput(outputId = ns("pathEnrichReactiveUI"))
+              )
+            )
+          )
+          
+        )
+      }, title = "PathEnrich"), session = session)
+      initialized(TRUE)
+      uiLabelNow(uiLabel())
+    }, ignoreInit = TRUE, autoDestroy = TRUE)
+    
+    uiToRender <- reactiveVal()
+    dataToShow <- reactiveVal()
+    plotToRender <- reactiveVal()
+    eresDown <- reactiveValues()
+    
+    observeEvent(input$runPathEnrich, {
+      ns <- session$ns
+      processed(FALSE)
+      TERM2GENE <- TERM2GENEList[[isolate({input$chooseEnrichType})]]
+      progress <- shiny::Progress$new()
+      on.exit(progress$close())
+      progress$set(message = paste0("PathEnrich for ", uiLabel(), " ..."), value = .3)
+      future({
+        EGMT <- clusterProfiler::enricher(gene = geneList,
+                                          TERM2GENE = TERM2GENE)
+        eres <- as.data.frame(EGMT)
+        if (length(eres$ID) < 12) {
+          if (! length(eres$ID)) {
+            showNotification(ui = "No pathways enriched at pAdj = .05 ... raising p value and re-running. False positives are very likely.", 
+                             type = "warning", duration = 6, session = session)
+          } else {
+            showNotification(ui = "Too few pathways enriched at pAdj = .05 ... raising p value and re-running. False positives are likely.", 
+                             type = "warning", duration = 6, session = session)
+          }
+          EGMT <- clusterProfiler::enricher(gene = geneList, pvalueCutoff = .2,
+                                            TERM2GENE = TERM2GENE)
+          eres <- as.data.frame(EGMT)
+          if (! length(eres$ID)) {
+            showNotification(ui = "No pathways returned pAdj = .2 ... Contact site maintainer if you believe this is an error.", 
+                             type = "error", duration = 8, session = session)
+          } else if (length(eres$ID) < 12) {
+            showNotification(ui = "Too few pathways enriched at pAdj = .2 ... False positives are very likely.", 
+                             type = "error", duration = 8, session = session)
+          }
+        }
+        eres
+      }) %...>% (function(eres) {
+        progress$set(message = "Rendering plots ... ", value = .3)
+        req(length(eres$ID))
+        print(colnames(eres))
+        eresRaw <- eres
+        eres <- eres[,c(2, 3, 5, 6)]
+        eresTitles <- eres$Description
+        eresTitles <- correlationAnalyzeR::fixStrings(eresTitles)
+        eresTitles[which(nchar(eresTitles) > 45)] <- paste0(
+          substr(eresTitles[which(nchar(eresTitles) > 45)], 1, 41), "..."
+        )
+        eres$Description <- createGSEAInfoLink(eres$Description, eresTitles)
+        eres$GeneRatio <- sapply(eres$GeneRatio, function(x) eval(parse(text=x)))
+        eres <- eres[order(eres$GeneRatio, decreasing = TRUE),]
+        eres[,c(2,3,4)] <- apply(eres[,c(2,3,4)], 1:2, round, digits = 5)
+        dataToShow(eres)
+        dp <- prettyPathEnrich(eresRaw)
+        plotToRender(dp)
+        resUI <- tagList(
+          hr(),
+          br(),
+          h2("Pathway Enrichment Results:"),
+          h3(uiLabel()),
+          br(),
+          hr(),
+          h3("Pathway enrichment plot"),
+          hr(),
+          plotOutput(ns("pathEnrichPlot")),
+          br(),
+          hr(),
+          h3("Pathway enrichment table"),
+          hr(),
+          DT::dataTableOutput(ns("pathEnrichDT")),
+          br(),
+          downloadDataUI(ns("pathwayEnrichDownloads"))
+        )
+        uiToRender(resUI)
+        eresDownload <- list("content" = eresRaw)
+        eresDown[["pathEnrichData"]] <- list("content" = eresRaw,
+                                             "uiName" = paste0(
+                                               strong("PathEnrich: "),
+                                               uiLabel()),
+                                             "file" = ".tsv")
+        processed(TRUE)
+        print("Ready for final plots and downloads!")
+      })
+    }, ignoreInit = TRUE, once = TRUE) # From https://community.rstudio.com/t/shiny-modal-module-stacking/44049/2
+    output$pathEnrichReactiveUI <- renderUI({
+      req(processed())
+      uiToRender()
+    })
+    output$pathEnrichPlot <- renderPlot({
+      req(processed())
+      plotToRender()
+    })
+    output$pathEnrichDT <- DT::renderDataTable({
+      req(processed())
+      dataToShow()
+    }, selection = list(mode = "single", selected = 1), 
+    rownames = F, server = T, escape = F, 
+    options = list(
+      pageLength = 6,
+      dom = "ftprl",
+      scrollX = TRUE
+    ),
+    colnames = c("Pathway", "Gene Ratio",
+                 "Pval", "Padj"))
+    
+    # Downloads module
+    observeEvent(eresDown$pathEnrichData, {
+      req(processed())
+      req(eresDown$pathEnrichData)
+      print("Downloads!")
+      callModule(module = downloadData, id = "pathwayEnrichDownloads", invalidater = FALSE,
+                 primaryName = gsub(uiLabel(), pattern = " ", replacement = "_"), 
+                 downloadsListReact = eresDown)
+    })
+  }
+  
+}
+
+
 ## Single-Mode analysis ##
 singleModeAnalysisUI <- function(id) {
   ns <- NS(id)
@@ -420,6 +619,8 @@ singleModeAnalysis <- function(input, output, session,
           resList[[1]][["correlations"]] <- data
           print("End of single mode analysis memory (cross compare): ")
           print(pryr::mem_used())
+          TERM2GENEList <- list("Simple" = GlobalData$TERM2GENEList$simple[[cleanRes$selectedSpecies]],
+                                "Complex" = GlobalData$TERM2GENEList$complex[[cleanRes$selectedSpecies]])
           res <- list("correlationData" = resList,
                       "species" = species,
                       "gseaType" = gseaType,
@@ -428,6 +629,7 @@ singleModeAnalysis <- function(input, output, session,
                       "sampleType" = sampleType,
                       "tissueType" = tissueType,
                       "progress" = progress,
+                      "TERM2GENEList" = TERM2GENEList,
                       "whichCompareGroups" = whichCompareGroups)
           res
         })
@@ -524,11 +726,17 @@ singleModePlots <- function(input, output, session,
   # Only for group mode
   groupMode <- reactiveVal()
   whichCompareGroups <- reactiveVal()
-  heatMapDat <- reactiveVal()
-  heatMapSmall <- reactiveVal()
+  heatMapDatVar <- reactiveVal()
+  heatMapDatCo <- reactiveVal()
+  heatMapSmallCo <- reactiveVal()
+  heatMapSmallVar <- reactiveVal()
   geneTPMBoxplot <- reactiveVal()
   geneTPMBoxplotData <- reactiveVal()
-  heatMap <- reactiveVal()
+  heatMapVar <- reactiveVal()
+  heatMapCo <- reactiveVal()
+  uiLabelCoUp <- reactiveVal()
+  uiLabelCoDn <- reactiveVal()
+  uiLabelVar <- reactiveVal()
   
   # Only for normal mode
   gseaRun <- reactiveVal()
@@ -540,13 +748,18 @@ singleModePlots <- function(input, output, session,
   EGMT <- reactiveVal()
   gseaDTReady <- reactiveVal()
   
+  
   observeEvent(eventExpr = dataTables$singleModeData(), {
     req(dataTables$singleModeData())
     dataTables$singleModeData() %...>% (function(dataList) {
       processed(FALSE)
-      heatMapDat(FALSE)
+      heatMapDatCo(FALSE)
+      heatMapDatVar(FALSE)
       uiName(NULL)
       fileName(NULL)
+      uiLabelCoUp(NULL)
+      uiLabelCoDn(NULL)
+      uiLabelVar(NULL)
       corrReady(FALSE)
       preprocessed(FALSE)
       gseaDTReady(FALSE)
@@ -570,6 +783,9 @@ singleModePlots <- function(input, output, session,
       # Assign values in a group-specific manner
       if ("whichCompareGroups" %in% names(dataList)) {
         groupMode(TRUE)
+        callModule(pathwayEnrich, "pathwayEnrichVar", clearModal = TRUE)
+        callModule(pathwayEnrich, "pathwayEnrichCoUp", clearModal = TRUE)
+        callModule(pathwayEnrich, "pathwayEnrichCoDn", clearModal = TRUE)
         whichCompareGroups(dataList[["whichCompareGroups"]])
         resList <- resList[[1]]
         correlations(resList[["correlations"]])
@@ -580,20 +796,87 @@ singleModePlots <- function(input, output, session,
         fileNameRaw <- paste0(dataList[["primaryGene"]], "_",
                               tolower(dataList[["whichCompareGroups"]]), "_",
                               "groupMode")
-        heatMapDat(resList[["heatmapBigData"]])
-        # heatMap(resList[["heatmapBig"]])
-        heatMapSmall(resList[["heatmapSmall"]])
+        heatMapDatVar(resList[["heatmapBigDataVar"]])
+        heatMapSmallVar(resList[["heatmapSmallVar"]])
+        heatMapDatCo(resList[["heatmapBigDataCo"]])
+        heatMapSmallCo(resList[["heatmapSmallCo"]])
         tpmBP <- resList[["TPM_boxPlot"]]
         tpmBP <- tpmBP + ggpubr::rotate_x_text(45, vjust = 1)
         geneTPMBoxplot(tpmBP)
         geneTPMBoxplotData(resList[["TPM_DF"]])
         dataTables$singleModeData() %...>% (function(dataList) {
           dataList$progress$inc(.2,
-                                message = "Rendering interactive heatmap ... ")
+                                message = "Rendering interactive heatmaps ... ")
         })
         uiName(uiNameRaw)
         fileName(fileNameRaw)
-        plt_dat <- heatMapDat()[c(1:200),]
+        
+        # Var first
+        plt_dat <- heatMapDatVar()[c(1:200),]
+        # plt_dat <- resList[["heatmapBigDataVar"]][c(1:200),]
+        # Center the scale
+        n <- length(colnames(plt_dat))# Get number of samples
+        width <- n*50
+        if (width < 800) {
+          width <- 800
+        } else if (width > 6000) {
+          width <- 6000
+        }
+        newNamesRaw <- colnames(plt_dat)
+        newNamesRaw <- strsplit(newNamesRaw, split = "_")
+        newNames <- sapply(newNamesRaw, "[[", 2)
+        newNames <- gsub(newNames, pattern = "0", replacement = " ")
+        newNames <- stringr::str_to_title(newNames)
+        if (whichCompareGroups() == "All") {
+          newNames2 <- sapply(newNamesRaw, "[[", 3)
+          newNames2 <- stringr::str_to_title(newNames2)
+          newNames <- paste0(newNames, " - ", newNames2)
+        }
+        mini <- min(plt_dat)
+        maxi <- max(plt_dat)
+        newVal <- max(c(abs(mini), maxi))
+        geneListNowVar <- rownames(plt_dat)
+        plt <- heatmaply(plt_dat, hide_colorbar = TRUE,
+                         limits = c(-1*newVal, newVal),# plot_method = "plotly",
+                         branches_lwd = .3,
+                         colors =  colorRampPalette(rev(RColorBrewer::brewer.pal(n = 7, name =
+                                                                                   "RdYlBu")))(100),
+                         labCol = newNames,
+                         showticklabels = c(T, F)) %>%
+          layout(height=500)
+        plt <- plt %>%
+          config(plot_ly(), displaylogo = F,
+                 modeBarButtonsToRemove = list(
+                   'hoverCompareCartesian',
+                   'hoverClosestCartesian',
+                   'zoomIn2d', 'zoomOut2d',
+                   'lasso2d'),
+                 toImageButtonOptions= list(filename = paste0(fileName(),
+                                                              "_heatMap.png"),
+                                            format = "png",
+                                            width = width,
+                                            height = 500))
+        heatMapVar(plt)
+        print("Starting plot routine for co-cor")
+        plt_dat <- heatMapDatCo()
+        plt_dat <- resList[["heatmapBigDataCo"]]
+        
+        print(dim(plt_dat))
+        str(plt_dat)
+        print(rowMeans(plt_dat))
+        plt_datUp <- plt_dat[which(rowMeans(plt_dat) > 0),]
+        plt_datUp <- plt_datUp[order(matrixStats::rowVars(as.matrix(plt_datUp)), decreasing = FALSE),]
+        plt_datUp <- plt_datUp[c(1:100),]
+        geneNameCoUp <- rownames(plt_datUp)
+        print(geneNameCoUp)
+        plt_datDn <- plt_dat[which(rowMeans(plt_dat) < 0),]
+        plt_datDn <- plt_datDn[order(matrixStats::rowVars(as.matrix(plt_datDn)), decreasing = FALSE),]
+        plt_datDn <- plt_datDn[c(1:100),]
+        geneNameCoDn <- rownames(plt_datDn)
+        print(geneNameCoDn)
+        plt_dat <- unique(rbind(plt_datUp, plt_datDn))
+        print(dim(plt_dat))
+        str(plt_dat)
         # Center the scale
         n <- length(colnames(plt_dat))# Get number of samples
         width <- n*50
@@ -635,7 +918,30 @@ singleModePlots <- function(input, output, session,
                                             format = "png",
                                             width = width,
                                             height = 500))
-        heatMap(plt)
+        heatMapCo(plt)
+        
+        
+        TERM2GENEList <- dataList[["TERM2GENEList"]]
+        print("about to call pathEnrich")
+        print(dataList[["primaryGene"]])
+        uiLabelCoUp(paste0(dataList[["primaryGene"]], 
+                       " consistently co-correlated genes"))
+        uiLabelCoDn(paste0(dataList[["primaryGene"]], 
+                           " consistently anti-correlated genes"))
+        uiLabelVar(paste0(dataList[["primaryGene"]], 
+                         " differentially correlated genes"))
+        callModule(pathwayEnrich, "pathwayEnrichCoUp", 
+                   geneList = geneNameCoUp, 
+                   TERM2GENEList = TERM2GENEList,
+                   uiLabel = uiLabelCoUp)
+        callModule(pathwayEnrich, "pathwayEnrichCoDn", 
+                   geneList = geneNameCoDn, 
+                   TERM2GENEList = TERM2GENEList,
+                   uiLabel = uiLabelCoDn)
+        callModule(pathwayEnrich, "pathwayEnrichVar", 
+                   geneList = geneListNowVar, 
+                   TERM2GENEList = TERM2GENEList,
+                   uiLabel = uiLabelVar)
       } else {
         # Assign normal-mode only values
         groupMode(FALSE)
@@ -673,9 +979,7 @@ singleModePlots <- function(input, output, session,
           EGMT(NULL)
           downloadsList$gseaData <- NULL
           downloadsList$correlationsGSEA <- NULL
-          
         }
-        heatMap(NULL)
         uiName(uiNameRaw)
         fileName(fileNameRaw)
       }
@@ -705,24 +1009,51 @@ singleModePlots <- function(input, output, session,
                  plotOutput(ns("geneHist"))
           ),
           column(width =  6, 
-                 DT::dataTableOutput(ns("correlationData"))
+                 withSpinner(DT::dataTableOutput(ns("correlationData")), type = 7)
           )
         )
       )
     } else {
       req(groupMode())
-      
       tagList(
         h1("Single Gene Results"),
         br(),
         hr(),
-        h2("Variant correlations across groups"),
+        h2("Gene expression across groups"),
+        hr(),
+        fluidRow(#style = "height:500px;",
+          column(width = 12,
+                withSpinner(plotOutput(ns("geneTPMBoxplot")), 
+                            type = 7))),
+        br(),
+        hr(),
+        h2("Consistent correlations across groups"),
         hr(),
         fluidRow( style = "height: 500px;",
                   column(width = 12, #title = "Correlation Histogram",
-                         withSpinner(plotlyOutput(ns("heatMap")),
+                         withSpinner(plotlyOutput(ns("heatMapCo")),
                                      type = 7))
-        )
+        ),
+        fluidRow(
+          column(width = 3, 
+                 h4("Consistently co-correlated genes:"),
+                 pathwayEnrichUI(ns("pathwayEnrichCoUp"), 
+                                 toolLabel = "Pathway enrichment for consistently co-correlated genes"),
+                 hr(),
+                 h4("Consistently anti-correlated genes:"),
+                 pathwayEnrichUI(ns("pathwayEnrichCoDn"), 
+                                 toolLabel = "Pathway enrichment for consistently anti-correlated genes"))
+
+        ),
+        br(),
+        hr(),
+        h2("Top 30 consistent correlations"),
+        hr(),
+        fluidRow( #style = "height:500px;",
+          column(width = 12,
+                 plotOutput(ns("heatMapSmallCo")))
+        ),
+        hr()
       )
     }
   })
@@ -759,30 +1090,49 @@ singleModePlots <- function(input, output, session,
     } else {
       tagList(
         hr(),
-        h2("Top variant correlations"),
+        h2("Variable correlations across groups"),
+        hr(),
+        fluidRow( style = "height: 500px;",
+                  column(width = 12, #title = "Correlation Histogram",
+                         withSpinner(plotlyOutput(ns("heatMapVar")),
+                                     type = 7))
+        ),
+        fluidRow(
+          column(width = 3, 
+                 h4("Variable genes:"),
+                 pathwayEnrichUI(ns("pathwayEnrichVar"), 
+                                 toolLabel = "Pathway enrichment for variable genes"))
+          
+        ),
+        br(),
+        hr(),
+        h2("Top 30 variable correlations"),
         hr(),
         fluidRow( #style = "height:500px;",
           column(width = 12,
-                 plotOutput(ns("heatMapSmall")))
+                 plotOutput(ns("heatMapSmallVar")))
         ),
-        hr(),
-        h2("Gene expression across groups"),
-        hr(),
-        fluidRow(#style = "height:500px;",
-          column(width = 12,
-                 plotOutput(ns("geneTPMBoxplot"))))
+        hr()
       )
     }
   })
-  output$heatMap <- renderPlotly({
+  output$heatMapCo <- renderPlotly({
     req(processed())
     req(groupMode())
-    heatMap()
+    heatMapCo()
   })
-  
-  
-  output$heatMapSmall <- renderPlot({
-    heatPlot <- heatMapSmall()
+  output$heatMapVar <- renderPlotly({
+    req(processed())
+    req(groupMode())
+    heatMapVar()
+  })
+  output$heatMapSmallCo <- renderPlot({
+    heatPlot <- heatMapSmallCo()
+    heatPlot <- ggplotify::as.ggplot(heatPlot[[4]])
+    print(heatPlot)
+  })
+  output$heatMapSmallVar <- renderPlot({
+    heatPlot <- heatMapSmallVar()
     heatPlot <- ggplotify::as.ggplot(heatPlot[[4]])
     print(heatPlot)
   })
@@ -2607,7 +2957,7 @@ topologyModeAnalysis <- function(input, output, session,
       cleanRes$secondaryGenes <- TERM2GENE$gene_symbol[TERM2GENE$gs_name ==
                                                          cleanRes$secondaryGenes]
     }
-    if (length(cleanRes$secondaryGenes) > 500) {
+    if (length(unique(cleanRes$secondaryGenes)) > 500) {
       msg <- paste0("Topology mode cannot process more than 500 genes. If you would ",
                     "like to test more, please use the R-package of correlationAnalyzeR.")
       showNotification(ui = msg, 
@@ -2617,28 +2967,49 @@ topologyModeAnalysis <- function(input, output, session,
     shiny::validate(need(length(cleanRes$secondaryGenes) < 501, 
                          label = "Use may not enter > 500 genes"))
     progress$inc(.2, message = "Analyzing correlations ... ")
-    res <- future({
-      correlationAnalyzeR::analyzeGenesetTopology(genesOfInterest = cleanRes$secondaryGenes, 
-                                                  Tissue = cleanRes$tissueType, 
-                                                  alternativeTSNE = T,
-                                                  pool = pool,
-                                                  returnDataOnly = T, 
-                                                  pathwayEnrichment = F, 
-                                                  crossComparisonType = crossComparisonType,
-                                                  Sample_Type = cleanRes$sampleType, 
-                                                  Species = cleanRes$selectedSpecies)
-    }, globals = list(cleanRes = cleanRes,
-                      pool = NULL,
-                      crossComparisonType = crossComparisonType)) %...>%
-      (function(data) {
-        res <- list("topologyModeData" = data,
-                    "species" = species,
-                    "crossComparisonType" = crossComparisonType,
-                    "tissueType" = cleanRes$tissueType,
-                    "sampleType" = cleanRes$sampleType,
-                    "progress" = progress)
-        res
-      })
+    if (length(unique(cleanRes$secondaryGenes)) > 100) {
+      res <- future({
+        correlationAnalyzeR::analyzeGenesetTopology(genesOfInterest = cleanRes$secondaryGenes, 
+                                                    Tissue = cleanRes$tissueType, 
+                                                    alternativeTSNE = T,
+                                                    pool = pool,
+                                                    returnDataOnly = T, 
+                                                    pathwayEnrichment = F, 
+                                                    crossComparisonType = crossComparisonType,
+                                                    Sample_Type = cleanRes$sampleType, 
+                                                    Species = cleanRes$selectedSpecies)
+      }, globals = list(cleanRes = cleanRes,
+                        pool = NULL,
+                        crossComparisonType = crossComparisonType)) %...>%
+        (function(data) {
+          res <- list("topologyModeData" = data,
+                      "species" = species,
+                      "crossComparisonType" = crossComparisonType,
+                      "tissueType" = cleanRes$tissueType,
+                      "sampleType" = cleanRes$sampleType,
+                      "progress" = progress)
+          res
+        })
+    } else {
+      data <- correlationAnalyzeR::analyzeGenesetTopology(genesOfInterest = cleanRes$secondaryGenes, 
+                                                         Tissue = cleanRes$tissueType, 
+                                                         alternativeTSNE = T,
+                                                         pool = pool, 
+                                                         returnDataOnly = T, 
+                                                         pathwayEnrichment = F, 
+                                                         crossComparisonType = crossComparisonType,
+                                                         Sample_Type = cleanRes$sampleType, 
+                                                         Species = cleanRes$selectedSpecies)
+      res <- list("topologyModeData" = data,
+                  "species" = species,
+                  "crossComparisonType" = crossComparisonType,
+                  "tissueType" = cleanRes$tissueType,
+                  "sampleType" = cleanRes$sampleType,
+                  "progress" = progress)
+      res
+    }
+    
+    
     res
   })
   print("Memory topology:")
@@ -2756,212 +3127,422 @@ topologyModePlots <- function(input, output, session,
   # Initialize values for output
   observeEvent(eventExpr = dataTables$topologyModeData(), {
     req(dataTables$topologyModeData())
-    dataTables$topologyModeData() %...>% 
-      (function(dataList) {
-        dataList$progress$inc(.3, message = "Returning results ... ")
-        on.exit(dataList$progress$close())
-        processed(FALSE)
-        do(dataList$do)
-        species(dataList$species)
-        dataRaw <- dataList$topologyModeData
-        corrData <- dataRaw$Correlation_Data
-        corrData$geneName <- rownames(corrData)
-        n <- length(colnames(corrData))
-        corrData <- corrData[,c(n, 1:(n-1))]
-        dataRaw$Correlation_Data <- corrData
-        if (species() == "Human") {
-          basicGeneInfo(GlobalData$HS_basicGeneInfo)
-        } else {
-          basicGeneInfo(GlobalData$MM_basicGeneInfo)
-        }
-        
-        tissueTypeRaw <- dataList[["tissueType"]]
-        sampleType(dataList[["sampleType"]])
-        tissueType(gsub(tissueTypeRaw, pattern = "0", replacement = " "))
-        uiName(paste0(" (",
-                      tissueType(), " - ",
-                      sampleType(), ")"))
-        fileName(paste0(
-          tissueType(), "_",
-          sampleType()))
-        downloadsList[["correlationData"]] <- list(
-          "content" = corrData,
-          "file" = ".tsv",
-          "uiName" = paste0(strong("Correlations: "), stringr::str_to_title(gsub(uiName(), 
-                                                                                 pattern = "\\(|\\)", 
-                                                                                 replacement = "")))
-        )
-        callModule(module = downloadData, id = "topologyModeDownloads", 
-                   primaryName = "topologyMode", downloadsListReact = downloadsList)
-        
-        showTab(inputId = "topologyNavs", 
-                target = "downloadsTab", 
-                session = session, select = F)
-        
-        # Mode types
-        if ("PCA_plot" %in% names(dataRaw) | "TSNE_plot" %in% names(dataRaw)) {
-          dimReduce(TRUE)
-          if (length(dataRaw$TSNE_data)) {
-            dimMode("TSNE")
-            dt_data <- dataRaw$TSNE_data
+    if (class(dataTables$topologyModeData()) == "promise") {
+      print("Promises topology! ! ")
+      dataTables$topologyModeData() %...>% 
+        (function(dataList) {
+          dataList$progress$inc(.3, message = "Returning results ... ")
+          on.exit(dataList$progress$close())
+          processed(FALSE)
+          do(dataList$do)
+          species(dataList$species)
+          dataRaw <- dataList$topologyModeData
+          corrData <- dataRaw$Correlation_Data
+          corrData$geneName <- rownames(corrData)
+          n <- length(colnames(corrData))
+          corrData <- corrData[,c(n, 1:(n-1))]
+          dataRaw$Correlation_Data <- corrData
+          if (species() == "Human") {
+            basicGeneInfo(GlobalData$HS_basicGeneInfo)
           } else {
-            dimMode("PCA")
-            dt_data <- dataRaw$PCA_data
+            basicGeneInfo(GlobalData$MM_basicGeneInfo)
           }
-          if(dimMode() == "PCA") {
-            if (! dataRaw$clustered) {
-              dt_data <- dt_data[,c(3,1,2)]
-              colnames(dt_data)[1] <- "geneName"
-              dt_data <- merge(y = dt_data, x = basicGeneInfo(), all.y = T, by = "geneName")
-              dt_data <- dt_data[order(dt_data$PC1, decreasing = T),]
-              plt <- dataRaw$PCA_plot
-              plt <- ggplotly(plt)
-              plt <- plt %>%
-                config(plot_ly(), 
-                       toImageButtonOptions = list(
-                         filename = paste0(fileName(), "_topologyMode_PCA.png"),
-                         format = "png",
-                         width = 800,
-                         height = 600))
-            } else {
-              colnames(dt_data)[1] <- "geneName"
-              dt_data <- merge(y = dt_data, x = basicGeneInfo(), all.y = T, by = "geneName")
-              dt_data <- dt_data[order(dt_data$clusters, -dt_data$PC1),]
-              xaxistext <- dataRaw$PCA_plot$labels$x
-              yaxistext <- dataRaw$PCA_plot$labels$y
-              plt <- plot_ly(dt_data, x = ~PC1 , y = ~PC2, text = ~ geneName,
-                             mode = "markers", color = ~clusters, marker = list(size = 7)) %>% 
-                layout(title = "PCA with clustering",
-                       xaxis = list(title = xaxistext),
-                       yaxis = list(title = yaxistext)) %>%
-                config(plot_ly(),
-                       toImageButtonOptions = list(
-                         filename = paste0(fileName(),
-                                           "_topologyMode_clusteredPCA.png")))
-            }
-          } else if (dimMode() == "TSNE") {
-            colnames(dt_data)[1] <- "geneName"
-            dt_data <- merge(y = dt_data, x = basicGeneInfo(), all.y = T, by = "geneName")
-            dt_data <- dt_data[order(dt_data$hclust, dt_data$tsne1),]
-            xaxistext <- dataRaw$TSNE_plot$labels$x
-            yaxistext <- dataRaw$TSNE_plot$labels$y
-            plt <- plot_ly(dt_data, x = ~tsne1 , y = ~tsne2, text =~ geneName,
-                           mode = "markers", color = ~hclust, marker = list(size = 7)) 
-            plt <- layout(plt, title = "TSNE with clustering", 
-                          xaxis = list(title = xaxistext),
-                          yaxis = list(title = yaxistext))
-            plt <- plt %>%
-              config(plot_ly(), displaylogo = F,
-                     modeBarButtonsToRemove = list(
-                       'hoverCompareCartesian',
-                       'hoverClosestCartesian',
-                       'zoomIn2d', 'zoomOut2d',
-                       'lasso2d'),
-                     toImageButtonOptions= list(filename = paste0(fileName(),
-                                                                  "_topologyMode_TSNE.png"),
-                                                format = "png",
-                                                width = 1000,
-                                                height = 600))
-          } 
-          PCAPlot(plt)
-          rownames(dt_data) <- NULL
-          dt_data <- dt_data[,c(-2)]
-          # Replace gene name with HTML to call gene info modal
-          dt_data[,c(3,4)] <- apply(dt_data[,c(3,4)], 1:2, signif, 3)
-          downloadsList[["dimReduceData"]] <- list(
-            "content" = dt_data,
-            "file" = ".tsv",
-            "uiName" = paste0(strong(paste0(dimMode(), " data: ")), stringr::str_to_title(gsub(uiName(), 
-                                                                                               pattern = "\\(|\\)", 
-                                                                                               replacement = "")))
-          )
-          dt_data$geneName <- createGeneInfoLink(dt_data$geneName)
           
-          PCADT(list("data" = dt_data,
-                     "type" = dimMode(),
-                     "cluster" = dataRaw$clustered))
-          showTab(inputId = "topologyNavs", 
-                  target = "dimReduction", 
-                  session = session, select = F)
-        } else {
-          dimReduce(FALSE)
-          downloadsList[["dimReduceData"]] <- NULL
-          hideTab(inputId = "topologyNavs", target = "dimReduction", 
-                  session = session)
-        }
-        if ("variantGenesHeatmap" %in% names(dataRaw)) {
-          varHeatMode(TRUE)
-          variantGenesHeatmap_MAT(dataRaw$variantGenesHeatmap_MAT)
-          ddata <- as.data.frame(variantGenesHeatmap_MAT())
-          ddata$geneName <- rownames(ddata)
-          n <- length(colnames(ddata))
-          m <- n-1
-          ddata <- ddata[,c(n, 1:m)]
-          downloadsList[["variantGenesHeatmapMatrix"]] <- list(
-            "content" = ddata,
+          tissueTypeRaw <- dataList[["tissueType"]]
+          sampleType(dataList[["sampleType"]])
+          tissueType(gsub(tissueTypeRaw, pattern = "0", replacement = " "))
+          uiName(paste0(" (",
+                        tissueType(), " - ",
+                        sampleType(), ")"))
+          fileName(paste0(
+            tissueType(), "_",
+            sampleType()))
+          downloadsList[["correlationData"]] <- list(
+            "content" = corrData,
             "file" = ".tsv",
-            "uiName" = paste0(strong("Heatmap data: "), stringr::str_to_title(gsub(uiName(), 
+            "uiName" = paste0(strong("Correlations: "), stringr::str_to_title(gsub(uiName(), 
                                                                                    pattern = "\\(|\\)", 
                                                                                    replacement = "")))
           )
+          callModule(module = downloadData, id = "topologyModeDownloads", 
+                     primaryName = "topologyMode", downloadsListReact = downloadsList)
+          
           showTab(inputId = "topologyNavs", 
-                  target = "varGenes", select = F,
-                  session = session)
-        } else {
-          varHeatMode(FALSE)
-          downloadsList[["variantGenesHeatmapMatrix"]] <- NULL
-          hideTab(inputId = "topologyNavs", target = "varGenes", 
-                  session = session)
-        }
-        if ("inputGenes_pathwayEnrich" %in% names(dataRaw)) {
-          pathEnrich(TRUE)
-          eres <- dataRaw$inputGenes_pathwayEnrich_data
-          if (! length(eres[,1])) {
-            msg <- paste0("No significant pathways returned. Please re-run without 'Pathway ",
-                          "Enrichment', or choose different genes to check.")
-            shiny::showNotification(ui = msg, type = "error")
-            pathEnrich(FALSE)
-          }
-          if (pathEnrich()) {
-            inputGenes_pathwayEnrich_dotplot(dataRaw$inputGenes_pathwayEnrich_dotplot)
-            eres <- eres[,c(2, 3, 5, 6, 8)]
-            eres <- eres[order(eres[,3], decreasing = F),]
-            if (length(eres$Description) > 100) {
-              eres <- eres[c(1:100),]
+                  target = "downloadsTab", 
+                  session = session, select = F)
+          
+          # Mode types
+          if ("PCA_plot" %in% names(dataRaw) | "TSNE_plot" %in% names(dataRaw)) {
+            dimReduce(TRUE)
+            if (length(dataRaw$TSNE_data)) {
+              dimMode("TSNE")
+              dt_data <- dataRaw$TSNE_data
+            } else {
+              dimMode("PCA")
+              dt_data <- dataRaw$PCA_data
             }
-            eres[,c(3,4)] <- apply(eres[,c(3,4)], 1:2, round, digits = 4)
-            eresTitles <- eres$Description
-            eresTitles <- correlationAnalyzeR::fixStrings(eresTitles)
-            eresTitles[which(nchar(eresTitles) > 60)] <- paste0(substr(eresTitles[which(nchar(eresTitles) > 60)], 1, 57), "...")
-            eres$Description <- createGSEAInfoLink(eres$Description, eresTitles)
-            pathwayEnrichDT(eres)
-            downloadsList[["pathwayEnrichmentData"]] <- list(
-              "content" = as.data.frame(dataRaw$inputGenes_pathwayEnrich),
+            if(dimMode() == "PCA") {
+              if (! dataRaw$clustered) {
+                dt_data <- dt_data[,c(3,1,2)]
+                colnames(dt_data)[1] <- "geneName"
+                dt_data <- merge(y = dt_data, x = basicGeneInfo(), all.y = T, by = "geneName")
+                dt_data <- dt_data[order(dt_data$PC1, decreasing = T),]
+                plt <- dataRaw$PCA_plot
+                plt <- ggplotly(plt)
+                plt <- plt %>%
+                  config(plot_ly(), 
+                         toImageButtonOptions = list(
+                           filename = paste0(fileName(), "_topologyMode_PCA.png"),
+                           format = "png",
+                           width = 800,
+                           height = 600))
+              } else {
+                colnames(dt_data)[1] <- "geneName"
+                dt_data <- merge(y = dt_data, x = basicGeneInfo(), all.y = T, by = "geneName")
+                dt_data <- dt_data[order(dt_data$clusters, -dt_data$PC1),]
+                xaxistext <- dataRaw$PCA_plot$labels$x
+                yaxistext <- dataRaw$PCA_plot$labels$y
+                plt <- plot_ly(dt_data, x = ~PC1 , y = ~PC2, text = ~ geneName,
+                               mode = "markers", color = ~clusters, marker = list(size = 7)) %>% 
+                  layout(title = "PCA with clustering",
+                         xaxis = list(title = xaxistext),
+                         yaxis = list(title = yaxistext)) %>%
+                  config(plot_ly(),
+                         toImageButtonOptions = list(
+                           filename = paste0(fileName(),
+                                             "_topologyMode_clusteredPCA.png")))
+              }
+            } else if (dimMode() == "TSNE") {
+              colnames(dt_data)[1] <- "geneName"
+              dt_data <- merge(y = dt_data, x = basicGeneInfo(), all.y = T, by = "geneName")
+              dt_data <- dt_data[order(dt_data$hclust, dt_data$tsne1),]
+              xaxistext <- dataRaw$TSNE_plot$labels$x
+              yaxistext <- dataRaw$TSNE_plot$labels$y
+              plt <- plot_ly(dt_data, x = ~tsne1 , y = ~tsne2, text =~ geneName,
+                             mode = "markers", color = ~hclust, marker = list(size = 7)) 
+              plt <- layout(plt, title = "TSNE with clustering", 
+                            xaxis = list(title = xaxistext),
+                            yaxis = list(title = yaxistext))
+              plt <- plt %>%
+                config(plot_ly(), displaylogo = F,
+                       modeBarButtonsToRemove = list(
+                         'hoverCompareCartesian',
+                         'hoverClosestCartesian',
+                         'zoomIn2d', 'zoomOut2d',
+                         'lasso2d'),
+                       toImageButtonOptions= list(filename = paste0(fileName(),
+                                                                    "_topologyMode_TSNE.png"),
+                                                  format = "png",
+                                                  width = 1000,
+                                                  height = 600))
+            } 
+            PCAPlot(plt)
+            rownames(dt_data) <- NULL
+            dt_data <- dt_data[,c(-2)]
+            # Replace gene name with HTML to call gene info modal
+            dt_data[,c(3,4)] <- apply(dt_data[,c(3,4)], 1:2, signif, 3)
+            downloadsList[["dimReduceData"]] <- list(
+              "content" = dt_data,
               "file" = ".tsv",
-              "uiName" = paste0(strong("Pathway enrichment: "), stringr::str_to_title(gsub(uiName(), 
-                                                                                           pattern = "\\(|\\)", 
-                                                                                           replacement = "")))
+              "uiName" = paste0(strong(paste0(dimMode(), " data: ")), stringr::str_to_title(gsub(uiName(), 
+                                                                                                 pattern = "\\(|\\)", 
+                                                                                                 replacement = "")))
+            )
+            dt_data$geneName <- createGeneInfoLink(dt_data$geneName)
+            
+            PCADT(list("data" = dt_data,
+                       "type" = dimMode(),
+                       "cluster" = dataRaw$clustered))
+            showTab(inputId = "topologyNavs", 
+                    target = "dimReduction", 
+                    session = session, select = F)
+          } else {
+            dimReduce(FALSE)
+            downloadsList[["dimReduceData"]] <- NULL
+            hideTab(inputId = "topologyNavs", target = "dimReduction", 
+                    session = session)
+          }
+          if ("variantGenesHeatmap" %in% names(dataRaw)) {
+            varHeatMode(TRUE)
+            variantGenesHeatmap_MAT(dataRaw$variantGenesHeatmap_MAT)
+            ddata <- as.data.frame(variantGenesHeatmap_MAT())
+            ddata$geneName <- rownames(ddata)
+            n <- length(colnames(ddata))
+            m <- n-1
+            ddata <- ddata[,c(n, 1:m)]
+            downloadsList[["variantGenesHeatmapMatrix"]] <- list(
+              "content" = ddata,
+              "file" = ".tsv",
+              "uiName" = paste0(strong("Heatmap data: "), stringr::str_to_title(gsub(uiName(), 
+                                                                                     pattern = "\\(|\\)", 
+                                                                                     replacement = "")))
             )
             showTab(inputId = "topologyNavs", 
-                    target = "pathwayEnrich", select = F,
+                    target = "varGenes", select = F,
                     session = session)
+          } else {
+            varHeatMode(FALSE)
+            downloadsList[["variantGenesHeatmapMatrix"]] <- NULL
+            hideTab(inputId = "topologyNavs", target = "varGenes", 
+                    session = session)
+          }
+          if ("inputGenes_pathwayEnrich" %in% names(dataRaw)) {
+            pathEnrich(TRUE)
+            eres <- dataRaw$inputGenes_pathwayEnrich_data
+            if (! length(eres[,1])) {
+              msg <- paste0("No significant pathways returned. Please re-run without 'Pathway ",
+                            "Enrichment', or choose different genes to check.")
+              shiny::showNotification(ui = msg, type = "error")
+              pathEnrich(FALSE)
+            }
+            if (pathEnrich()) {
+              inputGenes_pathwayEnrich_dotplot(dataRaw$inputGenes_pathwayEnrich_dotplot)
+              eres <- eres[,c(2, 3, 5, 6, 8)]
+              eres <- eres[order(eres[,3], decreasing = F),]
+              if (length(eres$Description) > 100) {
+                eres <- eres[c(1:100),]
+              }
+              eres[,c(3,4)] <- apply(eres[,c(3,4)], 1:2, round, digits = 4)
+              eresTitles <- eres$Description
+              eresTitles <- correlationAnalyzeR::fixStrings(eresTitles)
+              eresTitles[which(nchar(eresTitles) > 60)] <- paste0(substr(eresTitles[which(nchar(eresTitles) > 60)], 1, 57), "...")
+              eres$Description <- createGSEAInfoLink(eres$Description, eresTitles)
+              pathwayEnrichDT(eres)
+              downloadsList[["pathwayEnrichmentData"]] <- list(
+                "content" = as.data.frame(dataRaw$inputGenes_pathwayEnrich),
+                "file" = ".tsv",
+                "uiName" = paste0(strong("Pathway enrichment: "), stringr::str_to_title(gsub(uiName(), 
+                                                                                             pattern = "\\(|\\)", 
+                                                                                             replacement = "")))
+              )
+              showTab(inputId = "topologyNavs", 
+                      target = "pathwayEnrich", select = F,
+                      session = session)
+            } else {
+              pathEnrich(FALSE)
+              downloadsList[["pathwayEnrichmentData"]] <- NULL
+              hideTab(inputId = "topologyNavs", target = "pathwayEnrich", 
+                      session = session)
+            }
+            
           } else {
             pathEnrich(FALSE)
             downloadsList[["pathwayEnrichmentData"]] <- NULL
             hideTab(inputId = "topologyNavs", target = "pathwayEnrich", 
                     session = session)
           }
-          
+          processed(TRUE)
+          print("End of topology plots memory: ")
+          print(pryr::mem_used())
+        })
+    } else {
+      print("No promises topology !!")
+      dataList <- dataTables$topologyModeData()
+      dataList$progress$inc(.3, message = "Returning results ... ")
+      on.exit(dataList$progress$close())
+      processed(FALSE)
+      do(dataList$do)
+      species(dataList$species)
+      dataRaw <- dataList$topologyModeData
+      corrData <- dataRaw$Correlation_Data
+      corrData$geneName <- rownames(corrData)
+      n <- length(colnames(corrData))
+      corrData <- corrData[,c(n, 1:(n-1))]
+      dataRaw$Correlation_Data <- corrData
+      if (species() == "Human") {
+        basicGeneInfo(GlobalData$HS_basicGeneInfo)
+      } else {
+        basicGeneInfo(GlobalData$MM_basicGeneInfo)
+      }
+      
+      tissueTypeRaw <- dataList[["tissueType"]]
+      sampleType(dataList[["sampleType"]])
+      tissueType(gsub(tissueTypeRaw, pattern = "0", replacement = " "))
+      uiName(paste0(" (",
+                    tissueType(), " - ",
+                    sampleType(), ")"))
+      fileName(paste0(
+        tissueType(), "_",
+        sampleType()))
+      downloadsList[["correlationData"]] <- list(
+        "content" = corrData,
+        "file" = ".tsv",
+        "uiName" = paste0(strong("Correlations: "), stringr::str_to_title(gsub(uiName(), 
+                                                                               pattern = "\\(|\\)", 
+                                                                               replacement = "")))
+      )
+      callModule(module = downloadData, id = "topologyModeDownloads", 
+                 primaryName = "topologyMode", downloadsListReact = downloadsList)
+      
+      showTab(inputId = "topologyNavs", 
+              target = "downloadsTab", 
+              session = session, select = F)
+      
+      # Mode types
+      if ("PCA_plot" %in% names(dataRaw) | "TSNE_plot" %in% names(dataRaw)) {
+        dimReduce(TRUE)
+        if (length(dataRaw$TSNE_data)) {
+          dimMode("TSNE")
+          dt_data <- dataRaw$TSNE_data
+        } else {
+          dimMode("PCA")
+          dt_data <- dataRaw$PCA_data
+        }
+        if(dimMode() == "PCA") {
+          if (! dataRaw$clustered) {
+            dt_data <- dt_data[,c(3,1,2)]
+            colnames(dt_data)[1] <- "geneName"
+            dt_data <- merge(y = dt_data, x = basicGeneInfo(), all.y = T, by = "geneName")
+            dt_data <- dt_data[order(dt_data$PC1, decreasing = T),]
+            plt <- dataRaw$PCA_plot
+            plt <- ggplotly(plt)
+            plt <- plt %>%
+              config(plot_ly(), 
+                     toImageButtonOptions = list(
+                       filename = paste0(fileName(), "_topologyMode_PCA.png"),
+                       format = "png",
+                       width = 800,
+                       height = 600))
+          } else {
+            colnames(dt_data)[1] <- "geneName"
+            dt_data <- merge(y = dt_data, x = basicGeneInfo(), all.y = T, by = "geneName")
+            dt_data <- dt_data[order(dt_data$clusters, -dt_data$PC1),]
+            xaxistext <- dataRaw$PCA_plot$labels$x
+            yaxistext <- dataRaw$PCA_plot$labels$y
+            plt <- plot_ly(dt_data, x = ~PC1 , y = ~PC2, text = ~ geneName,
+                           mode = "markers", color = ~clusters, marker = list(size = 7)) %>% 
+              layout(title = "PCA with clustering",
+                     xaxis = list(title = xaxistext),
+                     yaxis = list(title = yaxistext)) %>%
+              config(plot_ly(),
+                     toImageButtonOptions = list(
+                       filename = paste0(fileName(),
+                                         "_topologyMode_clusteredPCA.png")))
+          }
+        } else if (dimMode() == "TSNE") {
+          colnames(dt_data)[1] <- "geneName"
+          dt_data <- merge(y = dt_data, x = basicGeneInfo(), all.y = T, by = "geneName")
+          dt_data <- dt_data[order(dt_data$hclust, dt_data$tsne1),]
+          xaxistext <- dataRaw$TSNE_plot$labels$x
+          yaxistext <- dataRaw$TSNE_plot$labels$y
+          plt <- plot_ly(dt_data, x = ~tsne1 , y = ~tsne2, text =~ geneName,
+                         mode = "markers", color = ~hclust, marker = list(size = 7)) 
+          plt <- layout(plt, title = "TSNE with clustering", 
+                        xaxis = list(title = xaxistext),
+                        yaxis = list(title = yaxistext))
+          plt <- plt %>%
+            config(plot_ly(), displaylogo = F,
+                   modeBarButtonsToRemove = list(
+                     'hoverCompareCartesian',
+                     'hoverClosestCartesian',
+                     'zoomIn2d', 'zoomOut2d',
+                     'lasso2d'),
+                   toImageButtonOptions= list(filename = paste0(fileName(),
+                                                                "_topologyMode_TSNE.png"),
+                                              format = "png",
+                                              width = 1000,
+                                              height = 600))
+        } 
+        PCAPlot(plt)
+        rownames(dt_data) <- NULL
+        dt_data <- dt_data[,c(-2)]
+        # Replace gene name with HTML to call gene info modal
+        dt_data[,c(3,4)] <- apply(dt_data[,c(3,4)], 1:2, signif, 3)
+        downloadsList[["dimReduceData"]] <- list(
+          "content" = dt_data,
+          "file" = ".tsv",
+          "uiName" = paste0(strong(paste0(dimMode(), " data: ")), stringr::str_to_title(gsub(uiName(), 
+                                                                                             pattern = "\\(|\\)", 
+                                                                                             replacement = "")))
+        )
+        dt_data$geneName <- createGeneInfoLink(dt_data$geneName)
+        
+        PCADT(list("data" = dt_data,
+                   "type" = dimMode(),
+                   "cluster" = dataRaw$clustered))
+        showTab(inputId = "topologyNavs", 
+                target = "dimReduction", 
+                session = session, select = F)
+      } else {
+        dimReduce(FALSE)
+        downloadsList[["dimReduceData"]] <- NULL
+        hideTab(inputId = "topologyNavs", target = "dimReduction", 
+                session = session)
+      }
+      if ("variantGenesHeatmap" %in% names(dataRaw)) {
+        varHeatMode(TRUE)
+        variantGenesHeatmap_MAT(dataRaw$variantGenesHeatmap_MAT)
+        ddata <- as.data.frame(variantGenesHeatmap_MAT())
+        ddata$geneName <- rownames(ddata)
+        n <- length(colnames(ddata))
+        m <- n-1
+        ddata <- ddata[,c(n, 1:m)]
+        downloadsList[["variantGenesHeatmapMatrix"]] <- list(
+          "content" = ddata,
+          "file" = ".tsv",
+          "uiName" = paste0(strong("Heatmap data: "), stringr::str_to_title(gsub(uiName(), 
+                                                                                 pattern = "\\(|\\)", 
+                                                                                 replacement = "")))
+        )
+        showTab(inputId = "topologyNavs", 
+                target = "varGenes", select = F,
+                session = session)
+      } else {
+        varHeatMode(FALSE)
+        downloadsList[["variantGenesHeatmapMatrix"]] <- NULL
+        hideTab(inputId = "topologyNavs", target = "varGenes", 
+                session = session)
+      }
+      if ("inputGenes_pathwayEnrich" %in% names(dataRaw)) {
+        pathEnrich(TRUE)
+        eres <- dataRaw$inputGenes_pathwayEnrich_data
+        if (! length(eres[,1])) {
+          msg <- paste0("No significant pathways returned. Please re-run without 'Pathway ",
+                        "Enrichment', or choose different genes to check.")
+          shiny::showNotification(ui = msg, type = "error")
+          pathEnrich(FALSE)
+        }
+        if (pathEnrich()) {
+          inputGenes_pathwayEnrich_dotplot(dataRaw$inputGenes_pathwayEnrich_dotplot)
+          eres <- eres[,c(2, 3, 5, 6, 8)]
+          eres <- eres[order(eres[,3], decreasing = F),]
+          if (length(eres$Description) > 100) {
+            eres <- eres[c(1:100),]
+          }
+          eres[,c(3,4)] <- apply(eres[,c(3,4)], 1:2, round, digits = 4)
+          eresTitles <- eres$Description
+          eresTitles <- correlationAnalyzeR::fixStrings(eresTitles)
+          eresTitles[which(nchar(eresTitles) > 60)] <- paste0(substr(eresTitles[which(nchar(eresTitles) > 60)], 1, 57), "...")
+          eres$Description <- createGSEAInfoLink(eres$Description, eresTitles)
+          pathwayEnrichDT(eres)
+          downloadsList[["pathwayEnrichmentData"]] <- list(
+            "content" = as.data.frame(dataRaw$inputGenes_pathwayEnrich),
+            "file" = ".tsv",
+            "uiName" = paste0(strong("Pathway enrichment: "), stringr::str_to_title(gsub(uiName(), 
+                                                                                         pattern = "\\(|\\)", 
+                                                                                         replacement = "")))
+          )
+          showTab(inputId = "topologyNavs", 
+                  target = "pathwayEnrich", select = F,
+                  session = session)
         } else {
           pathEnrich(FALSE)
           downloadsList[["pathwayEnrichmentData"]] <- NULL
           hideTab(inputId = "topologyNavs", target = "pathwayEnrich", 
                   session = session)
         }
-        processed(TRUE)
-        print("End of topology plots memory: ")
-        print(pryr::mem_used())
-      })
+        
+      } else {
+        pathEnrich(FALSE)
+        downloadsList[["pathwayEnrichmentData"]] <- NULL
+        hideTab(inputId = "topologyNavs", target = "pathwayEnrich", 
+                session = session)
+      }
+      processed(TRUE)
+      print("End of topology plots memory: ")
+      print(pryr::mem_used())
+    }
+    
   })
   
   # Dim reduction
