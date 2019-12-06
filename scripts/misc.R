@@ -48,20 +48,65 @@ save(humanTissueOptions, file = "data/humanTissueOptions.RData")
 save(mouseTissueOptions, file = "data/mouseTissueOptions.RData")
 
 # # Make GSEA objects
-# hsapiens_simple_TERM2GENE <- correlationAnalyzeR::getTERM2GENE(GSEA_Type = "simple",
-#                                                                Species = "hsapiens")
-# mmusculus_simple_TERM2GENE <- correlationAnalyzeR::getTERM2GENE(GSEA_Type = "simple",
-#                                                                Species = "mmusculus")
-# hsapiens_complex_TERM2GENE <- correlationAnalyzeR::getTERM2GENE(GSEA_Type = "complex",
-#                                                                Species = "hsapiens")
-# mmusculus_complex_TERM2GENE <- correlationAnalyzeR::getTERM2GENE(GSEA_Type = "complex",
-#                                                                Species = "mmusculus")
-# TERM2GENEList <- list("complex" = list("hsapiens" = hsapiens_complex_TERM2GENE,
-#                                        "mmusculus" = mmusculus_complex_TERM2GENE),
-#                       "simple" = list("hsapiens" = hsapiens_simple_TERM2GENE,
-#                                       "mmusculus" = mmusculus_simple_TERM2GENE))
-# save(TERM2GENEList,
-#      file = "data/TERM2GENE_Objects.RData")
+# Get data object
+Species <- "hsapiens"
+if (Species == "hsapiens") {
+  msigSpec <- "Homo sapiens"
+} else {
+  msigSpec <- "Mus musculus"
+}
+MDF <- msigdbr::msigdbr(species = msigSpec)
+MDF$gs_subcat <- gsub(MDF$gs_subcat, pattern = "CP:", replacement = "", perl = TRUE)
+MDF$gs_cat <- paste0(MDF$gs_cat, ":", MDF$gs_subcat)
+MDF$gs_cat <- gsub(MDF$gs_cat, pattern = ":$", replacement = "", perl = TRUE)
+MDF$gs_cat <- gsub(MDF$gs_cat, pattern = "C1", replacement = "Cytogenic bands", perl = TRUE)
+MDF$gs_cat <- gsub(MDF$gs_cat, pattern = "C6", replacement = "Oncogenic signatures", perl = TRUE)
+MDF$gs_cat <- gsub(MDF$gs_cat, pattern = "C7", replacement = "Immunological signatures", perl = TRUE)
+MDF$gs_cat <- gsub(MDF$gs_cat, pattern = "C2:", replacement = "", perl = TRUE)
+MDF$gs_cat <- gsub(MDF$gs_cat, pattern = "C5", replacement = "GO", perl = TRUE)
+MDF$gs_cat <- gsub(MDF$gs_cat, pattern = "H", replacement = "Hallmark", perl = TRUE)
+MDF$gs_cat <- gsub(MDF$gs_cat, pattern = "CP", replacement = "Canonical pathways", perl = TRUE)
+MDF$gs_cat <- gsub(MDF$gs_cat, pattern = "CGP", replacement = "Perturbations", perl = TRUE)
+MDF$gs_cat <- gsub(MDF$gs_cat, pattern = "C4:CGN", replacement = "Cancer gene neighborhoods", perl = TRUE)
+MDF$gs_cat <- gsub(MDF$gs_cat, pattern = "C4:CM", replacement = "Cancer modules", perl = TRUE)
+MDF$gs_cat <- gsub(MDF$gs_cat, pattern = "C3:MIR", replacement = "miRNA targets", perl = TRUE)
+MDF$gs_cat <- gsub(MDF$gs_cat, pattern = "C3:TFT", replacement = "TF targets", perl = TRUE)
+MDF$gs_cat <- gsub(MDF$gs_cat, pattern = "BIOCARTA", replacement = "BioCarta", perl = TRUE)
+MDF$gs_cat <- gsub(MDF$gs_cat, pattern = "REACTOME", replacement = "Reactome", perl = TRUE)
+MDFHuman <- MDF %>% 
+  select(gs_name, gs_cat, human_gene_symbol) 
+Species <- "mmusculus"
+if (Species == "hsapiens") {
+  msigSpec <- "Homo sapiens"
+} else {
+  msigSpec <- "Mus musculus"
+}
+MDF <- msigdbr::msigdbr(species = msigSpec)
+MDF$gs_subcat <- gsub(MDF$gs_subcat, pattern = "CP:", replacement = "", perl = TRUE)
+MDF$gs_cat <- paste0(MDF$gs_cat, ":", MDF$gs_subcat)
+MDF$gs_cat <- gsub(MDF$gs_cat, pattern = ":$", replacement = "", perl = TRUE)
+MDF$gs_cat <- gsub(MDF$gs_cat, pattern = "C1", replacement = "Cytogenic bands", perl = TRUE)
+MDF$gs_cat <- gsub(MDF$gs_cat, pattern = "C6", replacement = "Oncogenic signatures", perl = TRUE)
+MDF$gs_cat <- gsub(MDF$gs_cat, pattern = "C7", replacement = "Immunological signatures", perl = TRUE)
+MDF$gs_cat <- gsub(MDF$gs_cat, pattern = "C2:", replacement = "", perl = TRUE)
+MDF$gs_cat <- gsub(MDF$gs_cat, pattern = "C5", replacement = "GO", perl = TRUE)
+MDF$gs_cat <- gsub(MDF$gs_cat, pattern = "H", replacement = "Hallmark", perl = TRUE)
+MDF$gs_cat <- gsub(MDF$gs_cat, pattern = "CP", replacement = "Canonical pathways", perl = TRUE)
+MDF$gs_cat <- gsub(MDF$gs_cat, pattern = "CGP", replacement = "Perturbations", perl = TRUE)
+MDF$gs_cat <- gsub(MDF$gs_cat, pattern = "C4:CGN", replacement = "Cancer gene neighborhoods", perl = TRUE)
+MDF$gs_cat <- gsub(MDF$gs_cat, pattern = "C4:CM", replacement = "Cancer modules", perl = TRUE)
+MDF$gs_cat <- gsub(MDF$gs_cat, pattern = "C3:MIR", replacement = "miRNA targets", perl = TRUE)
+MDF$gs_cat <- gsub(MDF$gs_cat, pattern = "C3:TFT", replacement = "TF targets", perl = TRUE)
+MDF$gs_cat <- gsub(MDF$gs_cat, pattern = "BIOCARTA", replacement = "BioCarta", perl = TRUE)
+MDF$gs_cat <- gsub(MDF$gs_cat, pattern = "REACTOME", replacement = "Reactome", perl = TRUE)
+MDFMouse <- MDF %>% 
+  select(gs_name, gs_cat, human_gene_symbol, gene_symbol) 
+
+MDF <- full_join(MDFHuman, MDFMouse, by = colnames(MDFHuman))
+MDF <- MDF %>% distinct()
+colnames(MDF)[c(3:4)] <- c("human_gene_symbol", "mouse_gene_symbol")
+
+
 
 # Load data for the global environment
 load("data/geneInfo/HS_basicGeneInfo.RData")
@@ -85,7 +130,11 @@ GlobalData <- list("HS_basicGeneInfo" = HS_basicGeneInfo,
                    'mouseGeneOptions' = mouseGeneOptions,
                    'humanTissueOptions' = humanTissueOptions,
                    'mouseTissueOptions' = mouseTissueOptions,
-                   'TERM2GENEList' = TERM2GENEList)
+                   'MDF' = MDF)
+save(GlobalData, file = "data/GlobalData.RData")
+load("data/GlobalData.RData")
+term2geneCount <- as.data.frame(table(GlobalData$MDF$gs_name), stringsAsFactors = FALSE)
+GlobalData$MSIGDB_Geneset_Small_Names <- term2geneCount$Var1[which(term2geneCount$Freq < 501)]
 save(GlobalData, file = "data/GlobalData.RData")
 
 

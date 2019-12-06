@@ -4,6 +4,77 @@ removeTmp <- function() {
   dir.create("www/tmp")
 }
 
+
+# UI function to make ? button
+helpButton <- function(message) {
+  return(
+    tipify(
+      span(
+          HTML('<i class="fa fa-question-circle"></i>')), 
+       title = message, placement = "right",
+      options=list(container="body")
+    )
+  )
+  
+}
+
+# Get TERM2GENE from MDF object
+MDFtoTERM2GENE <- function(MDF, GSEA_Type, species) {
+  
+  # # Bug testing
+  # GSEA_Type <- "Basic"
+  # species <- "hsapiens"
+  
+  if (species == "hsapiens") {
+    toGrab <- 3
+  } else {
+    toGrab <- 4
+  }
+  print(GSEA_Type)
+  # Filter for pathways of interest
+  optionsNow <- c("Basic", "All", unique(MDF$gs_cat))
+  GSEA_Type <- gsub(GSEA_Type, pattern = "miRNAs", 
+                    replacement = "miRNA targets", perl = TRUE)
+  GSEA_Type <- gsub(GSEA_Type, pattern = "Transcription factors", 
+                    replacement = "TF targets", perl = TRUE)
+  GSEA_Type <- gsub(GSEA_Type, pattern = "Biological process", 
+                    replacement = "GO:BP", perl = TRUE)
+  GSEA_Type <- gsub(GSEA_Type, pattern = "Cellular component", 
+                    replacement = "GO:CC", perl = TRUE)
+  GSEA_Type <- gsub(GSEA_Type, pattern = "Molecular function", 
+                    replacement = "GO:MF", perl = TRUE)
+  GSEA_Type <- gsub(GSEA_Type, pattern = "Molecular perturbations", 
+                    replacement = "Perturbations", perl = TRUE)
+  GSEA_Type <- gsub(GSEA_Type, pattern = "Immuno signatures", 
+                    replacement = "Immunological signatures", perl = TRUE)
+  GSEA_Type <- gsub(GSEA_Type, pattern = "Onco signatures",
+                    replacement = "Oncogenic signatures", perl = TRUE)
+  GSEA_Type <- gsub(GSEA_Type, pattern = "Oncogene neighborhoods",
+                    replacement = "Cancer gene neighborhoods", perl = TRUE)
+  
+  
+  if (! all(GSEA_Type %in% optionsNow)) {
+    stop("\nPlease enter a valid GSEA_Type. Use ?getTERM2GENE to see available options.\n")
+  }
+  categories <- c()
+  if ("Basic" %in% GSEA_Type) {
+    categories <- c(categories, "Hallmark", "Perturbations", "BioCarta",
+                    "GO:BP", "KEGG", "Canonical pathways", "Reactome", "GO:MF", "GO:CC", "PID")
+  }
+  if ("All" %in% GSEA_Type) {
+    categories <- c(categories, optionsNow)
+  }
+  categories <- unique(c(categories, GSEA_Type))
+  colnames(MDF)[toGrab] <- "gene_symbol"
+  TERM2GENE <- MDF %>%
+    filter(.data$gs_cat %in% categories) %>%
+    select(.data$gs_name, .data$gene_symbol) %>%
+    filter(! is.na(.data$gene_symbol)) %>%
+    distinct()
+  
+  return(TERM2GENE)
+}
+
 # Fixes uiNames into colnames
 convertToColnames <- function(uiNameRaw) {
   colName <- gsub(uiNameRaw, pattern = " - ", replacement = "_")
@@ -21,6 +92,20 @@ createGeneInfoLink <- function(val) {
 # Create links in datatables for GSEA info from MSIGDB
 createGSEAInfoLink <- function(val, valTitle) {
   sprintf(paste0('<a href="http://software.broadinstitute.org/gsea/msigdb/cards/', val,'" id="', val ,'" target="_blank" class="tooltip-test" onClick="gsea_click(this.id)" title="', val, '">', valTitle, '</a>'))
+}
+
+# Get heatmap breaks
+getPhBreaks <- function(mat, palette = NULL) {
+  # From https://stackoverflow.com/questions/31677923/set-0-point-for-pheatmap-in-r
+  if (is.null(palette)) {
+    palette <- grDevices::colorRampPalette(rev(
+      RColorBrewer::brewer.pal(n = 7, name =
+                                 "RdYlBu")))(100)
+  }
+  n <- length(palette)
+  breaks <- c(seq(min(mat), 0, length.out=ceiling(n/2) + 1),
+              seq(max(mat)/n, max(mat), length.out=floor(n/2)))
+  return(list(palette, breaks))
 }
 
 # Pretty pathEnrich plot
@@ -51,8 +136,8 @@ symbolConverter <- function(symbolVec, species, pool) {
   # Provide a vector of gene symbols to check and convert
   
   ## Bug testing
-  # species <- "hsapiens"
-  # symbolVec <- c("Asxl1", "CGAS", "RPA", "SON", "ASDJN", "NRF2", "DHX9", "SRSF2", "SF3B1")
+  # species <- "mmusculus"
+  # symbolVec <- c("ATM", "BRCA1", "ATF4")
   ## symbolVec <- selectedGenes
   
   n <- length(symbolVec)
@@ -75,7 +160,7 @@ symbolConverter <- function(symbolVec, species, pool) {
   
   checkTheGene <- function(geneToCheck, aliasSymbol) {
     # symbolVec <- c("NFKB", "NRF2", "ASDNasd")
-    # geneToCheck <- symbolVec[i]
+    # geneToCheck <- symbolVec[1]
     # Check official symbols
     newGene <- aliasSymbol$symbol[grep(aliasSymbol$symbol, pattern = geneToCheck, ignore.case = T)][1]
     # Make sure length is matching for inclusion errors.  e.g. 'NRF2' returns 'LONRF2' erroneously
@@ -117,22 +202,15 @@ symbolConverter <- function(symbolVec, species, pool) {
     return(resDF)
   }
   if (length(symbolVec) > 1) {
-    resList <- future({
-      lapply(symbolVec, checkTheGene, aliasSymbol = aliasSymbol)
-    }, globals = list(symbolVec = symbolVec,
-                      checkTheGene = checkTheGene,
-                      aliasSymbol = aliasSymbol)) %...>%
-      (function(resList) {
-        resDF <- data.table::rbindlist(resList)
-        resList <- split(resDF, resDF$category)
-        resGenes <- as.character(resList$resGenes$geneNames)
-        confusedGenes <- as.character(resList$multiMappedGenes$geneNames)
-        unresolvableGenes <- as.character(resList$unresolvableGenes$geneNames)
-        resList <- list("unresolvableGenes" = unresolvableGenes, 
-                        "multiMappedGenes" = confusedGenes, 
-                        "resGenes" = resGenes)
-        resList
-      })
+    resList <- lapply(symbolVec, checkTheGene, aliasSymbol = aliasSymbol)
+    resDF <- data.table::rbindlist(resList)
+    resList <- split(resDF, resDF$category)
+    resGenes <- as.character(resList$resGenes$geneNames)
+    confusedGenes <- as.character(resList$multiMappedGenes$geneNames)
+    unresolvableGenes <- as.character(resList$unresolvableGenes$geneNames)
+    resList <- list("unresolvableGenes" = unresolvableGenes, 
+                    "multiMappedGenes" = confusedGenes, 
+                    "resGenes" = resGenes)
   } else {
     resList <- lapply(symbolVec, checkTheGene, aliasSymbol = aliasSymbol)
     resDF <- data.table::rbindlist(resList)
@@ -201,11 +279,11 @@ cleanInputs <- function(primaryGene = NULL,
   
 
   # # # Bug testing
-  # primaryGene <- "Tp53bp2"
-  # selectedSpecies <- "Mouse"
+  # primaryGene <- "BRCA1"
+  # selectedSpecies <- "Human"
   # sampleType <- "normal"
   # tissueType <- "all"
-  # secondaryGenes <- c("NRF2", "rif1", "atM", "xct", 'asdla', 'asdhsad', 'dfkjkn')
+  # secondaryGenes <- c("AAACCAC_MIR140")
     
   MM_basicGeneInfo <- GlobalData$MM_basicGeneInfo
   HS_basicGeneInfo <- GlobalData$HS_basicGeneInfo
@@ -267,28 +345,26 @@ cleanInputs <- function(primaryGene = NULL,
       resList[['geneSetInputType']] <- F
       res <- symbolConverter(symbolVec = secondaryGenes, pool = pool,
                              species = selectedSpecies)
-      res %...>% (function(res) {
-        secondaryGenes <- NULL
-        unresolvableGenes <- res$unresolvableGenes
-        if (length(unresolvableGenes)) {
-          msg <- paste0("Input list warning: '", paste0(unique(unresolvableGenes), collapse = "', '"), 
-                        "' not found. Skipping...")
-          showNotification(id = "unresolvable-gene-warning", ui = msg, session = session,
+      secondaryGenes <- NULL
+      unresolvableGenes <- res$unresolvableGenes
+      if (length(unresolvableGenes)) {
+        msg <- paste0("Input list warning: '", paste0(unique(unresolvableGenes), collapse = "', '"), 
+                      "' not found. Skipping...")
+        showNotification(id = "unresolvable-gene-warning", ui = msg, session = session,
+                         closeButton = T, type = "warning", duration = 8)
+      }
+      if (length(res$resGenes)) {
+        secondaryGenes <- res$resGenes
+        resList[["secondaryGenes"]] <- secondaryGenes
+        multiMappedGenes <- res$multiMappedGenes
+        if (length(multiMappedGenes)) {
+          msg <- paste0("Input '", paste0(multiMappedGenes, collapse = ", "), 
+                        "' returned multiple official gene symbols.")
+          showNotification(id = "multi-mapped-gene-warning", ui = msg, session = session,
                            closeButton = T, type = "warning", duration = 8)
         }
-        if (length(res$resGenes)) {
-          secondaryGenes <- res$resGenes
-          multiMappedGenes <- res$multiMappedGenes
-          if (length(multiMappedGenes)) {
-            msg <- paste0("Input '", paste0(multiMappedGenes, collapse = ", "), 
-                          "' returned multiple official gene symbols.")
-            showNotification(id = "multi-mapped-gene-warning", ui = msg, session = session,
-                             closeButton = T, type = "warning", duration = 8)
-          }
-        }
-      })
+      }
     }
-    resList[["secondaryGenes"]] <- secondaryGenes
     resList[["genesetInputs"]] <- genesetInputs
   }
   return(resList)
