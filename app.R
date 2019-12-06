@@ -29,16 +29,17 @@ credentials <- read.csv("accessKeys.csv", col.names = c("user", "password"),
 if (Sys.info()[['sysname']] == "Windows") {
   print("Windows OS detected!")
   # plan(multiprocess, workers = 4, gc = TRUE)
-  plan(sequential)
+  # plan(sequential)
   totalMemory <- 5
   # totalMemory <- as.numeric(gsub(system('wmic OS get TotalVisibleMemorySize /Value', intern = TRUE)[3], 
   #                                pattern = ".*=([0-9]+).*", replacement = "\\1"))
 } else if (Sys.info()[['sysname']] == "Linux") {
   print("Linux OS detected!")
-  plan(multiprocess, gc = TRUE)
+  # plan(multiprocess, gc = TRUE)
   totalMemory <- benchmarkme::get_ram()
   print(totalMemory)
 }
+plan(sequential)
 totalCores <- parallel::detectCores(logical = FALSE)
 totalThreads <- parallel::detectCores(logical = TRUE)
 

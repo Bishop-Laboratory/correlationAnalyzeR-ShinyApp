@@ -167,7 +167,7 @@ multiGeneInput <- function(input, output, session) {
     } else {
       selectizeInput(inputId = ns("genesetInput"), label = NULL, #server = TRUE,
                      options = list(maxOptions = 50),
-                     choices = GlobalData$MSIGDB_Geneset_Small_Names)
+                     choices = correlationAnalyzeR::MSIGDB_Geneset_Small_Names)
     }
   })
   observe({

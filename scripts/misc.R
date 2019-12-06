@@ -133,9 +133,12 @@ GlobalData <- list("HS_basicGeneInfo" = HS_basicGeneInfo,
                    'MDF' = MDF)
 save(GlobalData, file = "data/GlobalData.RData")
 load("data/GlobalData.RData")
-term2geneCount <- as.data.frame(table(GlobalData$MDF$gs_name), stringsAsFactors = FALSE)
-GlobalData$MSIGDB_Geneset_Small_Names <- term2geneCount$Var1[which(term2geneCount$Freq < 501)]
-save(GlobalData, file = "data/GlobalData.RData")
+# GlobalData <- GlobalData[-8]
+# save(GlobalData, file = "data/GlobalData.RData")
+
+# term2geneCount <- as.data.frame(table(GlobalData$MDF$gs_name), stringsAsFactors = FALSE)
+# MSIGDB_Geneset_Small_Names <- term2geneCount$Var1[which(term2geneCount$Freq < 501)]
+# save(MSIGDB_Geneset_Small_Names, file = "MSIGDB_Geneset_Small_Names.rda")
 
 
 
