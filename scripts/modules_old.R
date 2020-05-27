@@ -5,7 +5,7 @@ tissueTypeInputUI <- function(id) {
   ns <- NS(id)
   
   print("tissueTypeInputUI")
-
+  
   selectizeInput(inputId = ns("tissueType"), label = "Select tissue type",
                  choices = c("All"), 
                  multiple = F)
@@ -405,7 +405,7 @@ pathwayEnrich <- function(input, output, session,
                           MDF = NULL,
                           # species = NULL,
                           uiLabel = NULL
-                          ) {
+) {
   
   go <- reactiveVal()
   initialized <- reactiveVal()
@@ -644,7 +644,7 @@ singleModeAnalysisUI <- function(id) {
 
 singleModeAnalysis <- function(input, output, session, 
                                parent_session, GlobalData, pool#, auth
-                               ) {
+) {
   # observe({
   #   req(! auth$result)
   #   return(NULL)
@@ -654,13 +654,13 @@ singleModeAnalysis <- function(input, output, session,
   gseaVec <- callModule(pathwayTypeInput, "pathwayTypeInput", 
                         crossCompareMode = reactive({
                           input$crossComparisonMode
-                          }))
+                        }))
   primaryGene <- callModule(singleGeneInput, "singleGeneInput",
                             parent_session = parent_session,
                             humanGeneOptions = GlobalData$humanGeneOptions
                             # mouseGeneOptions = GlobalData$mouseGeneOptions
                             # species = species
-                            )
+  )
   tissueType <- callModule(tissueTypeInput, "tissueTypeInput",
                            parent_session = parent_session,
                            # mouseTissueOptions = GlobalData$mouseTissueOptions,
@@ -861,7 +861,7 @@ singleModePlotsUI <- function(id) {
 
 singleModePlots <- function(input, output, session, 
                             parent_session, dataTables #,auth
-                            ) {
+) {
   
   # observe({
   #   req(! auth$result)
@@ -1075,11 +1075,11 @@ singleModePlots <- function(input, output, session,
         
         MDF <- dataList[["MDF"]]
         uiLabelCoUp(paste0(dataList[["primaryGene"]], 
-                       " consistently co-correlated genes"))
+                           " consistently co-correlated genes"))
         uiLabelCoDn(paste0(dataList[["primaryGene"]], 
                            " consistently anti-correlated genes"))
         uiLabelVar(paste0(dataList[["primaryGene"]], 
-                         " differentially correlated genes"))
+                          " differentially correlated genes"))
         if (species == "Human") {
           speciesNow <- "hsapiens"
         } else {
@@ -1090,19 +1090,19 @@ singleModePlots <- function(input, output, session,
                    MDF = MDF,
                    uiLabel = uiLabelCoUp 
                    # species = speciesNow
-                   )
+        )
         callModule(pathwayEnrich, "pathwayEnrichCoDn", 
                    geneList = geneNameCoDn, 
                    MDF = MDF,
                    uiLabel = uiLabelCoDn
                    # species = speciesNow
-                   )
+        )
         callModule(pathwayEnrich, "pathwayEnrichVar", 
                    geneList = geneListNowVar, 
                    MDF = MDF,
                    uiLabel = uiLabelVar
                    # species = speciesNow
-                   )
+        )
       } else {
         # Assign normal-mode only values
         groupMode(FALSE)
@@ -1191,8 +1191,8 @@ singleModePlots <- function(input, output, session,
         hr(),
         fluidRow(#style = "height:500px;",
           column(width = 12,
-                withSpinner(plotOutput(ns("geneVSTBoxplot")), 
-                            type = 7))),
+                 withSpinner(plotOutput(ns("geneVSTBoxplot")), 
+                             type = 7))),
         br(),
         hr(),
         h2(span("Consistent correlations across groups ", 
@@ -1222,7 +1222,7 @@ singleModePlots <- function(input, output, session,
             )
           )
           
-
+          
         ),
         br(),
         hr(),
@@ -1339,9 +1339,9 @@ singleModePlots <- function(input, output, session,
     pageLength = 6,
     autoWidth = TRUE,
     columns = list(list(width = '23%'),
-                      list(width = '37%'),
-                      list(width = '20%'),
-                      list(width = '20%')),
+                   list(width = '37%'),
+                   list(width = '20%'),
+                   list(width = '20%')),
     dom = "ftprl",
     scrollX = TRUE),  colnames = c("Gene Name", 
                                    "Description", "Correlation Value", "P value"))
@@ -1621,7 +1621,7 @@ geneVsGeneModeAnalysisUI <- function(id) {
 }
 geneVsGeneModeAnalysis <- function(input, output, session, 
                                    parent_session, GlobalData, pool #, auth
-                                   ) {
+) {
   
   # observe({
   #   req(! auth$result)
@@ -1640,13 +1640,13 @@ geneVsGeneModeAnalysis <- function(input, output, session,
                         humanGeneOptions = GlobalData$humanGeneOptions,
                         # mouseGeneOptions = GlobalData$mouseGeneOptions
                         # species = species
-                        )
+  )
   tissueTypeOne <- callModule(tissueTypeInput, "tissueTypeInputOne",
                               parent_session = parent_session,
                               # mouseTissueOptions = GlobalData$mouseTissueOptions,
                               humanTissueOptions = GlobalData$humanTissueOptions
                               # species = species
-                              )
+  )
   sampleTypeOne <- callModule(sampleTypeInput, "sampleTypeInputOne",
                               parent_session = parent_session,
                               # mouseTissueOptions = GlobalData$mouseTissueOptions,
@@ -1665,7 +1665,7 @@ geneVsGeneModeAnalysis <- function(input, output, session,
                               # mouseTissueOptions = GlobalData$mouseTissueOptions,
                               humanTissueOptions = GlobalData$humanTissueOptions
                               # species = species
-                              )
+  )
   sampleTypeTwo <- callModule(sampleTypeInput, "sampleTypeInputTwo",
                               parent_session = parent_session,
                               # mouseTissueOptions = GlobalData$mouseTissueOptions,
@@ -1930,68 +1930,50 @@ geneVsGeneModeAnalysis <- function(input, output, session,
       # species = "Human"
       # pval = .05
       # sampleTypeOne = "normal"
-      # runGSEA = TRUE
       # sampleTypeTwo = "normal"
       # tissueTypeOne = "all"
       # tissueTypeTwo = "all"
       # progress = NULL
       # TERM2GENE <- MDFtoTERM2GENE(MDF = GlobalData$MDF, GSEA_Type = "Canonical pathways",
       #                             species = "hsapiens")
-      # pairedRes <- correlationAnalyzeR::analyzeGenePairs(genesOfInterest = c("BRCA1", "BRCA1"),
+      # pairedRes <- correlationAnalyzeR::analyzeGenePairs(genesOfInterest = c("BRCA1", "BRCA1"), 
       #                                                    Sample_Type = c("normal", "cancer"),
-      #                                                    Tissue = c("all", "all"),
+      #                                                    Tissue = c("all", "all"), 
       #                                                    returnDataOnly = T,
       #                                                    TERM2GENE = TERM2GENE,
       #                                                    topPlots = F,
       #                                                    # nperm = 500, sampler = T,
       #                                                    runGSEA = T)
-      
-      
-      res <- future({
-        pairedRes <- correlationAnalyzeR::analyzeGenePairs(genesOfInterest = genesOfInterest, 
-                                                           Sample_Type = Sample_Type,
-                                                           Tissue = Tissue, 
-                                                           # Species = cleanResOne$selectedSpecies,
-                                                           GSEA_Type = gseaType, 
-                                                           returnDataOnly = T,
-                                                           TERM2GENE = TERM2GENE,
-                                                           topPlots = F, pool = pool,
-                                                           # nperm = 500, sampler = T,
-                                                           runGSEA = runGSEA)
-        pairedRes
-      }, globals = list(
-                        genesOfInterest = genesOfInterest,
-                        Sample_Type = Sample_Type,
-                        Tissue = Tissue, 
-                        GSEA_Type = gseaType,
-                        TERM2GENE = TERM2GENE,
-                        runGSEA = runGSEA,
-                        pool = NULL
-      )) %...>%
-        (function(pairedRes){
-          
-          dataOrig <- pairedRes$compared$correlations
-          data <- cbind(rownames(dataOrig), dataOrig)
-          colnames(data)[1] <- "geneName"
-          # data <- data[which(data[,1] != cleanRes$primaryGene),]
-          rownames(data) <- NULL
-          data <- merge(x = cleanResOne$basicGeneInfo, y = data, by = "geneName")
-          colnames(data)[c(4:7)] <- colnames(dataOrig)
-          pairedRes[["processedCorrelationsFrame"]] <- data
-          res <- list("geneVsGeneResults" = pairedRes,
-                      "species" = species,
-                      "gseaType" = gseaType,
-                      "pval" = pval,
-                      "geneOne" = cleanResOne$primaryGene,
-                      "sampleTypeOne" = sampleTypeOne,
-                      "tissueTypeOne" = tissueTypeOne,
-                      "geneTwo" = cleanResTwo$primaryGene,
-                      "sampleTypeTwo" = sampleTypeTwo,
-                      "tissueTypeTwo" = tissueTypeTwo,
-                      "progress" = progress)
-          
-          res
-        })
+      print("GSEA TYPE")
+      pairedRes <- correlationAnalyzeR::analyzeGenePairs(genesOfInterest = genesOfInterest, 
+                                                         Sample_Type = Sample_Type,
+                                                         Tissue = Tissue, 
+                                                         # Species = cleanResOne$selectedSpecies,
+                                                         GSEA_Type = gseaType, 
+                                                         returnDataOnly = T,
+                                                         TERM2GENE = TERM2GENE,
+                                                         topPlots = F, pool = pool,
+                                                         # nperm = 500, sampler = T,
+                                                         runGSEA = runGSEA)
+      dataOrig <- pairedRes$compared$correlations
+      data <- cbind(rownames(dataOrig), dataOrig)
+      colnames(data)[1] <- "geneName"
+      # data <- data[which(data[,1] != cleanRes$primaryGene),]
+      rownames(data) <- NULL
+      data <- merge(x = cleanResOne$basicGeneInfo, y = data, by = "geneName")
+      colnames(data)[c(4:7)] <- colnames(dataOrig)
+      pairedRes[["processedCorrelationsFrame"]] <- data
+      res <- list("geneVsGeneResults" = pairedRes,
+                  "species" = species,
+                  "gseaType" = gseaType,
+                  "pval" = pval,
+                  "geneOne" = cleanResOne$primaryGene,
+                  "sampleTypeOne" = sampleTypeOne,
+                  "tissueTypeOne" = tissueTypeOne,
+                  "geneTwo" = cleanResTwo$primaryGene,
+                  "sampleTypeTwo" = sampleTypeTwo,
+                  "tissueTypeTwo" = tissueTypeTwo,
+                  "progress" = progress)
       res
     }
   })
@@ -2015,7 +1997,7 @@ geneVsGeneModePlotsUI <- function(id) {
 geneVsGeneModePlots <- function(input, output, session, 
                                 parent_session,
                                 GlobalData, dataTables#, auth
-                                ) {
+) {
   
   # observe({
   #   print(auth$result)
@@ -2042,7 +2024,6 @@ geneVsGeneModePlots <- function(input, output, session,
   timerStart <- reactiveVal()
   timerNow <- reactiveVal()
   tenSec <- reactiveVal()
-  tenSec2 <- reactiveVal()
   runGSEA <- reactiveVal()
   
   # Only for group mode
@@ -2087,7 +2068,7 @@ geneVsGeneModePlots <- function(input, output, session,
         timerStart(Sys.time())
         timerNow(0)
         tenSec(FALSE)
-        tenSec2(FALSE)
+        
         downloadsList$init <- FALSE
         downloadsList$ready <- FALSE
         downloadsList$downloadDataPairsPath <- NULL
@@ -2133,14 +2114,13 @@ geneVsGeneModePlots <- function(input, output, session,
                               theme(plot.margin=unit(c(.2, .2, .2, .4),"cm")))
           } else {
             geneVSTBoxplot1(
-                            ggpubr::ggpar(pairedRes$crossCompareVST[["VST_boxPlot"]], 
-                                          ylab = "Expression (VST counts)",
-                                          font.xtickslab = 14, font.y = 14, font.main = 18) +
-                              theme(plot.margin=unit(c(.2, .2, .2, .4),"cm")))
+              ggpubr::ggpar(pairedRes$crossCompareVST[["VST_boxPlot"]], 
+                            ylab = "Expression (VST counts)",
+                            font.xtickslab = 14, font.y = 14, font.main = 18) +
+                theme(plot.margin=unit(c(.2, .2, .2, .4),"cm")))
             geneVSTBoxplot2(NULL)
           }
         } else {
-          print("Promise and not group mode!!")
           groupMode(FALSE)
           uiNameOne(paste0(geneOne(), " (",
                            tissueTypeOne(), " - ",
@@ -2170,39 +2150,26 @@ geneVsGeneModePlots <- function(input, output, session,
           }
           dataList$progress$inc(.4, message = "Returning results ... ")
           on.exit(dataList$progress$close())
-          print("assigining cor plots")
           correlations(pairedRes[["processedCorrelationsFrame"]])
           corrPlot(pairedRes[["compared"]][["correlationPlotBin"]])
           VSTData(pairedRes[["compared"]][["VST_Data"]])
           geneVSTBoxplot1(
-            ggpubr::ggpar(pairedRes[["compared"]][["VST_boxPlot"]],
+            ggpubr::ggpar(pairedRes[["compared"]][["VST_boxPlot"]], 
                           ylab = "Expression (VST counts)",
-                          font.y = 14, font.xtickslab = 14, font.main = 18) +
+                          font.xtickslab = 14, font.y = 14, font.main = 18) +
               theme(plot.margin=unit(c(.2, .2, .2, .4),"cm")))
           geneVSTBoxplot2(NULL)
           heatGenesVar(pairedRes[["compared"]][["correlationVarianceHeatmap"]])
           heatGenesSim(pairedRes[["compared"]][["correlationSimilarityHeatmap"]])
-          print("Checking RUNGSEA")
-          if ("pathwayVarianceHeatmap" %in% names(pairedRes[["compared"]])) {
-            runGSEA(TRUE)
-            print("RUNGSEA IS TRUE")
-            heatPathsVar(pairedRes[["compared"]][["pathwayVarianceHeatmap"]])
-            heatPathsSim(pairedRes[["compared"]][["pathwaySimilarityHeatmap"]])
-            correlatedPathwaysDT <- pairedRes[["compared"]][[
-              "correlatedPathwaysDataFrame"]][,c(1, 2, 6, 10, 11)]
-            correlatedPathwaysDT <- correlatedPathwaysDT[order(correlatedPathwaysDT$NES_variance, 
-                                                               decreasing = T),]
-            colnames(correlatedPathwaysDT)[1] <- c("Pathway")
-            rownames(correlatedPathwaysDT) <- NULL
-            correlatedPathwaysDF(correlatedPathwaysDT)
-          } else {
-            print("RUNGSEA IS FALSE")
-            runGSEA(FALSE)
-            correlatedPathwaysDF(NULL)
-            heatPathsSim(NULL)
-            heatPathsVar(NULL)
-          }
-          
+          heatPathsVar(pairedRes[["compared"]][["pathwayVarianceHeatmap"]])
+          heatPathsSim(pairedRes[["compared"]][["pathwaySimilarityHeatmap"]])
+          correlatedPathwaysDT <- pairedRes[["compared"]][[
+            "correlatedPathwaysDataFrame"]][,c(1, 2, 6, 10, 11)]
+          correlatedPathwaysDT <- correlatedPathwaysDT[order(correlatedPathwaysDT$NES_variance, 
+                                                             decreasing = T),]
+          colnames(correlatedPathwaysDT)[1] <- c("Pathway")
+          rownames(correlatedPathwaysDT) <- NULL
+          correlatedPathwaysDF(correlatedPathwaysDT)
           if (species() == "Human") {
             GeneInfo <- GlobalData$HS_basicGeneInfo
           } else {
@@ -2232,7 +2199,7 @@ geneVsGeneModePlots <- function(input, output, session,
       timerStart(Sys.time())
       timerNow(0)
       tenSec(FALSE)
-      tenSec2(FALSE)
+      
       downloadsList$init <- FALSE
       downloadsList$ready <- FALSE
       downloadsList$downloadDataPairsPath <- NULL
@@ -2269,22 +2236,22 @@ geneVsGeneModePlots <- function(input, output, session,
         geneVSTData(pairedRes$crossCompareVST[["VST_DF"]])
         if (whichCompareGroups() == "cross_geneVsGene") {
           geneVSTBoxplot1(
-                          ggpubr::ggpar(pairedRes$crossCompareVST[["VST_boxPlotOne"]],
-                                        ylab = "Expression (VST counts)",
-                                        font.xtickslab = 14, font.y = 14, font.main = 18) +
-                            theme(plot.margin=unit(c(.2, .2, .2, .4),"cm")))
+            ggpubr::ggpar(pairedRes$crossCompareVST[["VST_boxPlotOne"]],
+                          ylab = "Expression (VST counts)",
+                          font.xtickslab = 14, font.y = 14, font.main = 18) +
+              theme(plot.margin=unit(c(.2, .2, .2, .4),"cm")))
           geneVSTBoxplot2(
-                          ggpubr::ggpar(pairedRes$crossCompareVST[["VST_boxPlotTwo"]],
-                                        ylab = "Expression (VST counts)",
-                                        font.xtickslab = 14, font.y = 14, font.main = 18) +
-                            theme(plot.margin=unit(c(.2, .2, .2, .4),"cm")))
+            ggpubr::ggpar(pairedRes$crossCompareVST[["VST_boxPlotTwo"]],
+                          ylab = "Expression (VST counts)",
+                          font.xtickslab = 14, font.y = 14, font.main = 18) +
+              theme(plot.margin=unit(c(.2, .2, .2, .4),"cm")))
         } else {
           geneVSTBoxplot1(
-                          ggpubr::ggpar(pairedRes$crossCompareVST[["VST_boxPlot"]],
-                                        ylab = "Expression (VST counts)",
-                                        font.xtickslab = 14, font.legend = 14,
-                                        font.y = 14, font.main = 18) +
-                            theme(plot.margin=unit(c(.2, .2, .2, .4),"cm")) + rremove("legend.title"))
+            ggpubr::ggpar(pairedRes$crossCompareVST[["VST_boxPlot"]],
+                          ylab = "Expression (VST counts)",
+                          font.xtickslab = 14, font.legend = 14,
+                          font.y = 14, font.main = 18) +
+              theme(plot.margin=unit(c(.2, .2, .2, .4),"cm")) + rremove("legend.title"))
           geneVSTBoxplot2(NULL)
         }
       } else {
@@ -2321,10 +2288,10 @@ geneVsGeneModePlots <- function(input, output, session,
         corrPlot(pairedRes[["compared"]][["correlationPlotBin"]])
         VSTData(pairedRes[["compared"]][["VST_Data"]])
         geneVSTBoxplot1(
-                        ggpubr::ggpar(pairedRes[["compared"]][["VST_boxPlot"]],
-                                      ylab = "Expression (VST counts)",
-                                      font.y = 14, font.xtickslab = 14, font.main = 18) +
-                          theme(plot.margin=unit(c(.2, .2, .2, .4),"cm")))
+          ggpubr::ggpar(pairedRes[["compared"]][["VST_boxPlot"]],
+                        ylab = "Expression (VST counts)",
+                        font.y = 14, font.xtickslab = 14, font.main = 18) +
+            theme(plot.margin=unit(c(.2, .2, .2, .4),"cm")))
         geneVSTBoxplot2(NULL)
         heatGenesVar(pairedRes[["compared"]][["correlationVarianceHeatmap"]])
         heatGenesSim(pairedRes[["compared"]][["correlationSimilarityHeatmap"]])
@@ -2345,7 +2312,7 @@ geneVsGeneModePlots <- function(input, output, session,
           heatPathsSim(NULL)
           heatPathsVar(NULL)
         }
-       
+        
         if (species() == "Human") {
           GeneInfo <- GlobalData$HS_basicGeneInfo
         } else {
@@ -2406,19 +2373,12 @@ geneVsGeneModePlots <- function(input, output, session,
                  plotOutput(ns("geneVSTBoxplot1")))),
         tagsVSTNow
       )
-    
+      
       
     } else {
       req((! groupMode()))
-      toAdd <- tagList(
-        br(),
-        h3("Loading ... "),
-        br()
-      )
       if(! tenSec()) {
-        invalidateLater(5000)
-        print("not invalidating -- cor plot")
-        # invalidateLater(5000)
+        invalidateLater(3000)
         # tagList(
         #   h1("Gene vs Gene Results"),
         #   br(),
@@ -2433,47 +2393,39 @@ geneVsGeneModePlots <- function(input, output, session,
           br()
         )
       } else {
-        print("not invalidating -- cor plot post tensec")
-        
-        if (! tenSec2()) {
-          print("Invalidating ONCE")
-          invalidateLater(1000)
-        } else {
-          print("NO MORE INVALD")
-          toAdd <- tagList(
-            fluidRow(
-              column(width = 10, offset = 1,
-                     plotOutput(ns("geneVSTBoxplot1")))),
-            br(),
-            br(),
-            hr(),
-            h2("Compared correlations"),
-            hr(),
-            fluidRow(
-              em("Resize page if not loaded..."),
-              column(width = 7, offset = 2, 
-                     tagList(
-                       withSpinner(type = 7, plotOutput(ns("corrScatter"))),
-                       hr()
-                     )
-              )
-            ),
-            br(),
-            fluidRow(
-              column(width = 5, offset = 1, 
-                     plotOutput(ns("heatGenesVar"))),
-              column(width = 5, 
-                     plotOutput(ns("heatGenesSim")))
-            )
-          )
-        }
+        toAdd <- tagList(
+          br()
+        )
       }
       tagList(
         h1("Gene vs Gene Results"),
+        toAdd,
         hr(),
         h2("Compared gene expression"),
         hr(),
-        toAdd
+        fluidRow(
+          column(width = 10, offset = 1,
+                 plotOutput(ns("geneVSTBoxplot1")))),
+        br(),
+        br(),
+        hr(),
+        h2("Compared correlations"),
+        hr(),
+        fluidRow(
+          column(width = 7, offset = 2, 
+                 tagList(
+                   withSpinner(type = 7, plotOutput(ns("corrScatter"))),
+                   hr()
+                 )
+          )
+        ),
+        br(),
+        fluidRow(
+          column(width = 5, offset = 1, 
+                 plotOutput(ns("heatGenesVar"))),
+          column(width = 5, 
+                 plotOutput(ns("heatGenesSim")))
+        )
       )
     }
   })
@@ -2488,26 +2440,6 @@ geneVsGeneModePlots <- function(input, output, session,
       req((! groupMode()))
       if (runGSEA()) {
         req(runGSEA())
-        if(! tenSec()) {
-          invalidateLater(3000)
-          # tagList(
-          #   h1("Gene vs Gene Results"),
-          #   br(),
-          #   hr(),
-          #   h2("Compared correlations"),
-          #   hr(),
-          #   h2("Loading ... ")
-          # )
-          toAdd <- tagList(
-            br(),
-            h3("Loading ... "),
-            br()
-          )
-        } else {
-          toAdd <- tagList(
-            br()
-          )
-        }
         tagList(
           hr(),
           h2(span("Compared corGSEA results ", 
@@ -2731,11 +2663,6 @@ geneVsGeneModePlots <- function(input, output, session,
     } else {
       tenSec(TRUE)
     }
-    if (timerNow() < 7) {
-      invalidateLater(1000)
-    } else {
-      tenSec2(TRUE)
-    }
   })
   
   
@@ -2770,7 +2697,7 @@ geneVsGeneListModeAnalysisUI <- function(id) {
 }
 geneVsGeneListModeAnalysis <- function(input, output, session, 
                                        parent_session, GlobalData, pool#, auth
-                                       ) {
+) {
   
   # observe({
   #   req(! auth$result)
@@ -2786,13 +2713,13 @@ geneVsGeneListModeAnalysis <- function(input, output, session,
                             humanGeneOptions = GlobalData$humanGeneOptions,
                             # mouseGeneOptions = GlobalData$mouseGeneOptions
                             # species = species
-                            )
+  )
   tissueType <- callModule(tissueTypeInput, "tissueTypeInput",
                            parent_session = parent_session,
                            # mouseTissueOptions = GlobalData$mouseTissueOptions,
                            humanTissueOptions = GlobalData$humanTissueOptions
                            # species = species
-                           )
+  )
   sampleType <- callModule(sampleTypeInput, "sampleTypeInput",
                            parent_session = parent_session,
                            # mouseTissueOptions = GlobalData$mouseTissueOptions,
@@ -2925,7 +2852,7 @@ geneVsGeneListModePlotsUI <- function(id) {
 geneVsGeneListModePlots <- function(input, output, session, 
                                     parent_session,
                                     GlobalData, dataTables#, auth
-                                    ) {
+) {
   # observe({
   #   req(! auth$result)
   #   return(NULL)
@@ -3128,8 +3055,8 @@ geneVsGeneListModePlots <- function(input, output, session,
         fluidRow(
           hr(),
           h2(span("Significance test plot" , "   ",
-                      helpButton(message = paste0('Empirical distribution of t test p values',
-                                                  ' comparing secondary genes to random.')))),
+                  helpButton(message = paste0('Empirical distribution of t test p values',
+                                              ' comparing secondary genes to random.')))),
           hr(),
           column(width = 8, 
                  plotlyOutput(ns("sigTestPlots"),
@@ -3233,7 +3160,7 @@ topologyModeAnalysisUI <- function(id) {
 }
 topologyModeAnalysis <- function(input, output, session, 
                                  parent_session, GlobalData, pool#, auth
-                                 ) {
+) {
   
   # observe({
   #   req(! auth$result)
@@ -3248,7 +3175,7 @@ topologyModeAnalysis <- function(input, output, session,
                            # mouseTissueOptions = GlobalData$mouseTissueOptions,
                            humanTissueOptions = GlobalData$humanTissueOptions
                            # species = species
-                           )
+  )
   sampleType <- callModule(sampleTypeInput, "sampleTypeInput",
                            parent_session = parent_session,
                            # mouseTissueOptions = GlobalData$mouseTissueOptions,
@@ -3357,7 +3284,7 @@ topologyModeAnalysis <- function(input, output, session,
                                                     crossComparisonType = crossComparisonType,
                                                     Sample_Type = cleanRes$sampleType
                                                     # Species = cleanRes$selectedSpecies
-                                                    )
+        )
       }, globals = list(cleanRes = cleanRes,
                         pool = NULL,
                         crossComparisonType = crossComparisonType)) %...>%
@@ -3372,15 +3299,15 @@ topologyModeAnalysis <- function(input, output, session,
         })
     } else {
       data <- correlationAnalyzeR::analyzeGenesetTopology(genesOfInterest = cleanRes$secondaryGenes, 
-                                                         Tissue = cleanRes$tissueType, 
-                                                         alternativeTSNE = T,
-                                                         pool = pool, 
-                                                         returnDataOnly = T, 
-                                                         pathwayEnrichment = F, 
-                                                         crossComparisonType = crossComparisonType,
-                                                         Sample_Type = cleanRes$sampleType
-                                                         # Species = cleanRes$selectedSpecies
-                                                         )
+                                                          Tissue = cleanRes$tissueType, 
+                                                          alternativeTSNE = T,
+                                                          pool = pool, 
+                                                          returnDataOnly = T, 
+                                                          pathwayEnrichment = F, 
+                                                          crossComparisonType = crossComparisonType,
+                                                          Sample_Type = cleanRes$sampleType
+                                                          # Species = cleanRes$selectedSpecies
+      )
       res <- list("topologyModeData" = data,
                   "species" = species,
                   "crossComparisonType" = crossComparisonType,
@@ -3465,7 +3392,7 @@ topologyModePlotsUI <- function(id) {
 topologyModePlots <- function(input, output, session,
                               parent_session,
                               GlobalData, dataTables#, auth
-                              ) {
+) {
   
   # observe({
   #   req(! auth$result)

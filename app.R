@@ -17,7 +17,7 @@ library(shinycssloaders)
 options(spinner.color="#337AB7")
 options(shiny.sanitize.errors = FALSE)
 options(future.globals.maxSize=1e9)
-source("scripts/modules.R")
+source("scripts/modules_old.R")
 source("scripts/helpers.R")
 load("data/GlobalData.RData")
 
