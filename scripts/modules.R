@@ -3,21 +3,28 @@
 # Input types
 tissueTypeInputUI <- function(id) {
   ns <- NS(id)
+  
+  print("tissueTypeInputUI")
+
   selectizeInput(inputId = ns("tissueType"), label = "Select tissue type",
                  choices = c("All"), 
                  multiple = F)
 }
-tissueTypeInput <- function(input, output, session, 
+tissueTypeInput <- function(input, output, session,
                             parent_session,
-                            mouseTissueOptions,
+                            # mouseTissueOptions,
                             humanTissueOptions,
-                            species, 
+                            # species,
                             crossComparisonMode = FALSE) {
   # Get data objects
   # Observe for the selected species
   # If the selected species changes to mouse, update the selectize options
+  
+  print("tissueTypeInput")
+  
   observe({
-    speciesSelected <- species()
+    # speciesSelected <- species()
+    speciesSelected <- "Human"
     crossComparisonMode <- crossComparisonMode
     if (crossComparisonMode) {
       updateSelectizeInput(session = session,
@@ -57,6 +64,9 @@ tissueTypeInput <- function(input, output, session,
 }
 sampleTypeInputUI <- function(id, selected = "Normal") {
   ns <- NS(id)
+  
+  print("sampleTypeInputUI")
+  
   selectizeInput(inputId = ns("sampleType"), label = "Select sample type",
                  choices = c("Normal", "Cancer"), selected = selected,
                  multiple = F)
@@ -65,11 +75,15 @@ sampleTypeInput <- function(input, output, session,
                             parent_session,
                             mouseTissueOptions,
                             humanTissueOptions,
-                            species, tissueType,  selected = "Normal") {
+                            # species,
+                            tissueType,  selected = "Normal") {
   # Observe for the selected species
   # If the selected species changes to mouse, update the selectize options
+  
+  print("sampleTypeInput")
+  
   observe({
-    speciesSelected <- species()
+    speciesSelected <- "Human"
     tissueSelected <- tissueType()
     if (tissueSelected == "-") {
       updateSelectizeInput(session = session,
@@ -102,6 +116,9 @@ sampleTypeInput <- function(input, output, session,
 # Input function for single genes
 singleGeneInputUI <- function(id, label) {
   ns <- NS(id)
+  
+  print("singleGeneInputUI")
+  
   tagList(
     selectizeInput(inputId = ns("primaryGene"), 
                    label =  label,
@@ -115,12 +132,13 @@ singleGeneInput <- function(input, output, session,
                             parent_session,
                             mouseGeneOptions, 
                             humanGeneOptions, 
-                            species, 
+                            # species, 
                             selected = NULL) {
   # Observe for the selected species
   # If the selected species changes to mouse, update the selectize options
   observe({
-    speciesSelected <- species()
+    # speciesSelected <- species()
+    speciesSelected <- "Human"
     if (is.null(selected)) {
       selected <- c("BRCA1", "Brca1")
     }
@@ -385,8 +403,9 @@ pathwayEnrich <- function(input, output, session,
                           clearModal = FALSE,
                           geneList = NULL, 
                           MDF = NULL,
-                          uiLabel = NULL,
-                          species = NULL) {
+                          # species = NULL,
+                          uiLabel = NULL
+                          ) {
   
   go <- reactiveVal()
   initialized <- reactiveVal()
@@ -452,6 +471,7 @@ pathwayEnrich <- function(input, output, session,
       shiny::validate(need((! is.null(gseaType)), 
                            label = "Pathway annotation type "))
       progress$set(message = paste0("PathEnrich for ", uiLabel(), " ..."), value = .3)
+      species <- "hsapiens"
       TERM2GENE <- MDFtoTERM2GENE(MDF = MDF, GSEA_Type = gseaType,
                                   species = species)
       # TERM2GENE <- MDFtoTERM2GENE(MDF = GlobalData$MDF, GSEA_Type = "complex", species = "hsapiens")
@@ -588,8 +608,8 @@ singleModeAnalysisUI <- function(id) {
   ns <- NS(id)
   tagList(
     singleGeneInputUI(ns("singleGeneInput"), "Select gene"),
-    selectInput(inputId = ns("species"), label = "Select species",
-                choices = c("Human", "Mouse"), selected = "Human"),
+    # selectInput(inputId = ns("species"), label = "Select species",
+    #             choices = c("Human", "Mouse"), selected = "Human"),
     tissueTypeInputUI(ns("tissueTypeInput")),
     sampleTypeInputUI(ns("sampleTypeInput")),
     pathwayTypeInputUI(ns("pathwayTypeInput"), label = "corGSEA annotations"),
@@ -598,7 +618,7 @@ singleModeAnalysisUI <- function(id) {
            switchInput(ns("crossComparisonMode"), value = FALSE, label = "Group mode"),
            content = paste0('Shows correlations across multiple tissue-disease groups.')
     ),
-    conditionalPanel(condition = "input.crossComparisonMode && input.species == 'Human'", 
+    conditionalPanel(condition = "input.crossComparisonMode", 
                      ns = ns,
                      radioButtons(inputId = ns("crossComparisonModeTypeHuman"), 
                                   label = span("Group mode type ", 
@@ -608,15 +628,15 @@ singleModeAnalysisUI <- function(id) {
                                                                            ' all normal tissues.'))), 
                                   selected = "Normal",
                                   choices = c("Normal", "Cancer", "All"))),
-    conditionalPanel(condition = "input.crossComparisonMode && input.species == 'Mouse'", 
-                     ns = ns,
-                     radioButtons(inputId = ns("crossComparisonModeTypeMouse"), 
-                                  label = span("Group mode type ", 
-                                               helpButton(message = paste0('Select sample types to include in ',
-                                                                           'group analysis. Only "Normal" type',
-                                                                           ' tissues are available for mouse.'))), 
-                                  selected = "Normal",
-                                  choices = c("Normal"))),
+    # conditionalPanel(condition = "input.crossComparisonMode && input.species == 'Mouse'", 
+    #                  ns = ns,
+    #                  radioButtons(inputId = ns("crossComparisonModeTypeMouse"), 
+    #                               label = span("Group mode type ", 
+    #                                            helpButton(message = paste0('Select sample types to include in ',
+    #                                                                        'group analysis. Only "Normal" type',
+    #                                                                        ' tissues are available for mouse.'))), 
+    #                               selected = "Normal",
+    #                               choices = c("Normal"))),
     fluidRow(
       column(4, actionButton(ns("do"), "Analyze"))
     )
@@ -624,49 +644,53 @@ singleModeAnalysisUI <- function(id) {
 }
 
 singleModeAnalysis <- function(input, output, session, 
-                               parent_session, GlobalData, pool, auth) {
-  observe({
-    req(! auth$result)
-    return(NULL)
-  })
-  species <- reactive({input$species})
+                               parent_session, GlobalData, pool#, auth
+                               ) {
+  # observe({
+  #   req(! auth$result)
+  #   return(NULL)
+  # })
+  # species <- reactive({input$species})
+  species <- "Human"
   gseaVec <- callModule(pathwayTypeInput, "pathwayTypeInput", 
                         crossCompareMode = reactive({
                           input$crossComparisonMode
                           }))
   primaryGene <- callModule(singleGeneInput, "singleGeneInput",
                             parent_session = parent_session,
-                            humanGeneOptions = GlobalData$humanGeneOptions,
-                            mouseGeneOptions = GlobalData$mouseGeneOptions,
-                            species = species)
+                            humanGeneOptions = GlobalData$humanGeneOptions
+                            # mouseGeneOptions = GlobalData$mouseGeneOptions
+                            # species = species
+                            )
   tissueType <- callModule(tissueTypeInput, "tissueTypeInput",
                            parent_session = parent_session,
-                           mouseTissueOptions = GlobalData$mouseTissueOptions,
+                           # mouseTissueOptions = GlobalData$mouseTissueOptions,
                            humanTissueOptions = GlobalData$humanTissueOptions,
-                           species = species,
+                           # species = species,
                            crossComparisonMode = input$crossComparisonMode)
   sampleType <- callModule(sampleTypeInput, "sampleTypeInput",
                            parent_session = parent_session,
-                           mouseTissueOptions = GlobalData$mouseTissueOptions,
+                           # mouseTissueOptions = GlobalData$mouseTissueOptions,
                            humanTissueOptions = GlobalData$humanTissueOptions,
-                           species = species, 
+                           # species = species, 
                            tissueType = tissueType)
   
   
   observe({
     crossComparisonMode <- input$crossComparisonMode
-    speciesSelected <- input$species
+    # speciesSelected <- input$species
+    speciesSelected <- "Human"
     tissueType <- callModule(tissueTypeInput, "tissueTypeInput",
                              parent_session = parent_session,
-                             mouseTissueOptions = GlobalData$mouseTissueOptions,
+                             # mouseTissueOptions = GlobalData$mouseTissueOptions,
                              humanTissueOptions = GlobalData$humanTissueOptions,
-                             species = species,
+                             # species = species,
                              crossComparisonMode = input$crossComparisonMode)
     sampleType <- callModule(sampleTypeInput, "sampleTypeInput",
                              parent_session = parent_session,
-                             mouseTissueOptions = GlobalData$mouseTissueOptions,
+                             # mouseTissueOptions = GlobalData$mouseTissueOptions,
                              humanTissueOptions = GlobalData$humanTissueOptions,
-                             species = species, 
+                             # species = species, 
                              tissueType = tissueType)
   })
   
@@ -679,7 +703,8 @@ singleModeAnalysis <- function(input, output, session,
     tissueType <- tissueType()
     tissueType <- tolower(tissueType)
     tissueType <- gsub(tissueType, pattern = " ", replacement = "0")
-    species <- input$species
+    # species <- input$species
+    species <- "Human"
     gseaType <- gseaVec$chooseEnrichTypeTop
     if (gseaType == "Custom") {
       gseaType <- gseaVec$chooseEnrichType
@@ -707,6 +732,7 @@ singleModeAnalysis <- function(input, output, session,
     progress$set(message = "Validating inputs ... ", value = .1)
     # on.exit(progress$close())
     
+    species <- "Human"
     cleanRes <- cleanInputs(primaryGene = primaryGene,
                             selectedSpecies = species,
                             sampleType = sampleType,
@@ -718,14 +744,14 @@ singleModeAnalysis <- function(input, output, session,
     if (input$crossComparisonMode) {
       progress$inc(.2, message = paste0("Calculating group comparisons for ", 
                                         primaryGene, " ... "))
-      if (input$species == "Human") {
+      if (species == "Human") {
         whichCompareGroups <- input$crossComparisonModeTypeHuman
       } else {
         whichCompareGroups <- input$crossComparisonModeTypeMouse
       }
       future({
         correlationAnalyzeR::analyzeSingleGenes(
-          Species = cleanRes$selectedSpecies,
+          # Species = cleanRes$selectedSpecies,
           runGSEA = F, crossCompareMode = T,
           returnDataOnly = T, pool = pool,
           whichCompareGroups = tolower(whichCompareGroups),
@@ -748,7 +774,7 @@ singleModeAnalysis <- function(input, output, session,
           print("End of single mode analysis memory (cross compare): ")
           print(pryr::mem_used())
           res <- list("correlationData" = resList,
-                      "species" = species,
+                      # "species" = species,
                       "gseaType" = gseaType,
                       "pval" = pval,
                       "primaryGene" = cleanRes$primaryGene,
@@ -775,7 +801,8 @@ singleModeAnalysis <- function(input, output, session,
       
       res <- future(expr = {
         correlationAnalyzeR::analyzeSingleGenes(pool = pool,
-                                                genesOfInterest = cleanRes$primaryGene, Species = cleanRes$selectedSpecies,
+                                                genesOfInterest = cleanRes$primaryGene, 
+                                                # Species = cleanRes$selectedSpecies,
                                                 Sample_Type = cleanRes$sampleType,
                                                 GSEA_Type = tolower(gseaType), TERM2GENE = TERM2GENE,
                                                 Tissue = cleanRes$tissueType,crossCompareMode = FALSE, 
@@ -800,7 +827,7 @@ singleModeAnalysis <- function(input, output, session,
                           print(pryr::mem_used())
                           # Enable the download button
                           res <- list("correlationData" = resList,
-                                      "species" = species,
+                                      # "species" = species,
                                       "gseaType" = gseaType,
                                       "pval" = pval,
                                       "primaryGene" = cleanRes$primaryGene,
@@ -828,19 +855,21 @@ singleModePlotsUI <- function(id) {
 }
 
 singleModePlots <- function(input, output, session, 
-                            parent_session, dataTables, auth) {
+                            parent_session, dataTables #,auth
+                            ) {
   
-  observe({
-    req(! auth$result)
-    return(NULL)
-  })
-  
+  # observe({
+  #   req(! auth$result)
+  #   return(NULL)
+  # })
+  # 
   # For group and normal mode
   primaryGene <- reactiveVal()
   uiName <- reactiveVal()
   fileName <- reactiveVal()
   correlations <- reactiveVal()
-  species <- reactiveVal()
+  # species <- reactiveVal()
+  # species <- "Human"
   downloadsList <- reactiveValues()
   processed <- reactiveVal()
   preprocessed <- reactiveVal()
@@ -856,8 +885,8 @@ singleModePlots <- function(input, output, session,
   heatMapDatCo <- reactiveVal()
   heatMapSmallCo <- reactiveVal()
   heatMapSmallVar <- reactiveVal()
-  geneTPMBoxplot <- reactiveVal()
-  geneTPMBoxplotData <- reactiveVal()
+  geneVSTBoxplot <- reactiveVal()
+  geneVSTBoxplotData <- reactiveVal()
   heatMapVar <- reactiveVal()
   heatMapCo <- reactiveVal()
   uiLabelCoUp <- reactiveVal()
@@ -899,13 +928,14 @@ singleModePlots <- function(input, output, session,
       downloadsList$correlationData <- NULL
       downloadsList$gseaData <- NULL
       downloadsList$correlationsGSEA <- NULL
-      downloadsList$groupModeTPM <- NULL
+      downloadsList$groupModeVST <- NULL
       
       # Assign values relevant to both modes
       
       primaryGene(dataList[["primaryGene"]])
       
-      species(dataList[["species"]])
+      # species(dataList[["species"]])
+      species = "Human"
       # Assign values in a group-specific manner
       if ("whichCompareGroups" %in% names(dataList)) {
         groupMode(TRUE)
@@ -926,15 +956,15 @@ singleModePlots <- function(input, output, session,
         heatMapSmallVar(resList[["heatmapSmallVar"]])
         heatMapDatCo(resList[["heatmapBigDataCo"]])
         heatMapSmallCo(resList[["heatmapSmallCo"]])
-        tpmBP <- resList[["TPM_boxPlot"]]
-        tpmBP <- tpmBP + ggpubr::rotate_x_text(45, vjust = 1)
-        tpmBP <- ggpubr::ggpar(tpmBP, ylab = "Expression (log2[TPM+1])",
+        VSTBP <- resList[["VST_boxPlot"]]
+        VSTBP <- VSTBP + ggpubr::rotate_x_text(45, vjust = 1)
+        VSTBP <- ggpubr::ggpar(VSTBP, ylab = "Expression (VST counts)",
                                font.xtickslab = 14, font.legend = 14,
-                               font.y = 14, font.main = 18) +
+                               font.y = 18, font.main = 22) +
           theme(plot.margin=unit(c(.2, .2, .2, .4),"cm")) + rremove("legend.title")
         
-        geneTPMBoxplot(tpmBP)
-        geneTPMBoxplotData(resList[["TPM_DF"]])
+        geneVSTBoxplot(VSTBP)
+        geneVSTBoxplotData(resList[["VST_DF"]])
         dataTables$singleModeData() %...>% (function(dataList) {
           dataList$progress$inc(.2,
                                 message = "Rendering interactive heatmaps ... ")
@@ -954,20 +984,18 @@ singleModePlots <- function(input, output, session,
           width <- 6000
         }
         newNamesRaw <- colnames(plt_dat)
-        newNamesRaw <- strsplit(newNamesRaw, split = "_")
-        newNames <- sapply(newNamesRaw, "[[", 2)
-        newNames <- gsub(newNames, pattern = "0", replacement = " ")
+        newNames <- gsub(newNamesRaw, pattern = "^[a-zA-Z0-9]+_(.+)_([a-zA-Z]+)$", replacement = "\\1 - \\2")
+        newNames <- gsub(newNames, pattern = "_", replacement = " ")
         newNames <- stringr::str_to_title(newNames)
-        if (whichCompareGroups() == "All") {
-          newNames2 <- sapply(newNamesRaw, "[[", 3)
-          newNames2 <- stringr::str_to_title(newNames2)
-          newNames <- paste0(newNames, " - ", newNames2)
+        if (whichCompareGroups() != "All") {
+          newNames <- gsub(newNames, pattern = " - .+", replacement = "")
         }
         mini <- min(plt_dat)
         maxi <- max(plt_dat)
         newVal <- max(c(abs(mini), maxi))
         geneListNowVar <- rownames(plt_dat)
-        plt <- heatmaply(plt_dat, hide_colorbar = FALSE,
+        print(newNames)
+        plt <- heatmaply(plt_dat, hide_colorbar = FALSE, 
                          limits = c(-1*newVal, newVal),# plot_method = "plotly",
                          branches_lwd = .3,
                          colors =  colorRampPalette(rev(RColorBrewer::brewer.pal(n = 7, name =
@@ -1008,14 +1036,11 @@ singleModePlots <- function(input, output, session,
           width <- 6000
         }
         newNamesRaw <- colnames(plt_dat)
-        newNamesRaw <- strsplit(newNamesRaw, split = "_")
-        newNames <- sapply(newNamesRaw, "[[", 2)
-        newNames <- gsub(newNames, pattern = "0", replacement = " ")
+        newNames <- gsub(newNamesRaw, pattern = "^[a-zA-Z0-9]+_(.+)_([a-zA-Z]+)$", replacement = "\\1 - \\2")
+        newNames <- gsub(newNames, pattern = "_", replacement = " ")
         newNames <- stringr::str_to_title(newNames)
-        if (whichCompareGroups() == "All") {
-          newNames2 <- sapply(newNamesRaw, "[[", 3)
-          newNames2 <- stringr::str_to_title(newNames2)
-          newNames <- paste0(newNames, " - ", newNames2)
+        if (whichCompareGroups() != "All") {
+          newNames <- gsub(newNames, pattern = " - .+", replacement = "")
         }
         mini <- min(plt_dat)
         maxi <- max(plt_dat)
@@ -1050,7 +1075,7 @@ singleModePlots <- function(input, output, session,
                            " consistently anti-correlated genes"))
         uiLabelVar(paste0(dataList[["primaryGene"]], 
                          " differentially correlated genes"))
-        if (species() == "Human") {
+        if (species == "Human") {
           speciesNow <- "hsapiens"
         } else {
           speciesNow <- "mmusculus"
@@ -1058,18 +1083,21 @@ singleModePlots <- function(input, output, session,
         callModule(pathwayEnrich, "pathwayEnrichCoUp", 
                    geneList = geneNameCoUp, 
                    MDF = MDF,
-                   uiLabel = uiLabelCoUp, 
-                   species = speciesNow)
+                   uiLabel = uiLabelCoUp 
+                   # species = speciesNow
+                   )
         callModule(pathwayEnrich, "pathwayEnrichCoDn", 
                    geneList = geneNameCoDn, 
                    MDF = MDF,
-                   uiLabel = uiLabelCoDn,
-                   species = speciesNow)
+                   uiLabel = uiLabelCoDn
+                   # species = speciesNow
+                   )
         callModule(pathwayEnrich, "pathwayEnrichVar", 
                    geneList = geneListNowVar, 
                    MDF = MDF,
-                   uiLabel = uiLabelVar,
-                   species = speciesNow)
+                   uiLabel = uiLabelVar
+                   # species = speciesNow
+                   )
       } else {
         # Assign normal-mode only values
         groupMode(FALSE)
@@ -1158,7 +1186,7 @@ singleModePlots <- function(input, output, session,
         hr(),
         fluidRow(#style = "height:500px;",
           column(width = 12,
-                withSpinner(plotOutput(ns("geneTPMBoxplot")), 
+                withSpinner(plotOutput(ns("geneVSTBoxplot")), 
                             type = 7))),
         br(),
         hr(),
@@ -1284,7 +1312,7 @@ singleModePlots <- function(input, output, session,
     heatPlot <- ggplotify::as.ggplot(heatPlot[[4]])
     print(heatPlot)
   })
-  output$geneTPMBoxplot <- renderPlot({geneTPMBoxplot()})
+  output$geneVSTBoxplot <- renderPlot({geneVSTBoxplot()})
   # Normal-mode UI elements
   output$correlationData <- DT::renderDataTable({
     corrReady(TRUE)
@@ -1426,7 +1454,7 @@ singleModePlots <- function(input, output, session,
     colnames(corrDFNow2)[1] <- "geneset_ID"
     colnames(corrDFNow2)[5] <- paste0(colnames(corrDFNow2)[5], "_correlation_value")
     eresCorDownload(corrDFNow2)
-    speciesNow <- species()
+    speciesNow <- "hsapiens"
     EGMTNow <- EGMT()
     # Return the plot
     future({
@@ -1462,8 +1490,8 @@ singleModePlots <- function(input, output, session,
                                                  strong("Group-mode correlations: "), 
                                                  uiName()),
                                                "file" = ".tsv")
-    req(geneTPMBoxplotData())
-    downloadsList[["groupModeTPM"]] <- list("content" = geneTPMBoxplotData(),
+    req(geneVSTBoxplotData())
+    downloadsList[["groupModeVST"]] <- list("content" = geneVSTBoxplotData(),
                                             "uiName" = paste0(strong("Group-mode expression: "),
                                                               uiName()),
                                             "file" = ".tsv")
@@ -1573,8 +1601,8 @@ geneVsGeneModeAnalysisUI <- function(id) {
              sampleTypeInputUI(ns("sampleTypeInputTwo"), "Cancer")
       )
     ),
-    selectInput(inputId = ns("species"), label = "Select species",
-                choices = c("Human", "Mouse"), selected = "Human"),
+    # selectInput(inputId = ns("species"), label = "Select species",
+    #             choices = c("Human"), selected = "Human"),
     pathwayTypeInputUI(ns("pathwayTypeInput"), label = "corGSEA annotations"),
     popify(title = "Group mode", # trigger = "focus",
            placement = "right", options=list(container="body"),
@@ -1587,81 +1615,89 @@ geneVsGeneModeAnalysisUI <- function(id) {
   )
 }
 geneVsGeneModeAnalysis <- function(input, output, session, 
-                                   parent_session, GlobalData, pool, auth) {
+                                   parent_session, GlobalData, pool #, auth
+                                   ) {
   
-  observe({
-    req(! auth$result)
-    return(NULL)
-  })
+  # observe({
+  #   req(! auth$result)
+  #   return(NULL)
+  # })
   
   crossComparisonMode <- reactive({input$crossComparisonMode})
   observe({
     crossComparisonMode <- input$crossComparisonMode
   })
   do <- reactive({input$do})
-  species <- reactive({input$species})
+  # species <- reactive({input$species})
+  species <- "Human"
   geneOne <- callModule(singleGeneInput, "singleGeneInputOne",
                         parent_session = parent_session,
                         humanGeneOptions = GlobalData$humanGeneOptions,
-                        mouseGeneOptions = GlobalData$mouseGeneOptions,
-                        species = species)
+                        # mouseGeneOptions = GlobalData$mouseGeneOptions
+                        # species = species
+                        )
   tissueTypeOne <- callModule(tissueTypeInput, "tissueTypeInputOne",
                               parent_session = parent_session,
-                              mouseTissueOptions = GlobalData$mouseTissueOptions,
-                              humanTissueOptions = GlobalData$humanTissueOptions,
-                              species = species)
+                              # mouseTissueOptions = GlobalData$mouseTissueOptions,
+                              humanTissueOptions = GlobalData$humanTissueOptions
+                              # species = species
+                              )
   sampleTypeOne <- callModule(sampleTypeInput, "sampleTypeInputOne",
                               parent_session = parent_session,
-                              mouseTissueOptions = GlobalData$mouseTissueOptions,
+                              # mouseTissueOptions = GlobalData$mouseTissueOptions,
                               humanTissueOptions = GlobalData$humanTissueOptions,
-                              species = species, 
+                              # species = species, 
                               tissueType = tissueTypeOne)
   
   geneTwo <- callModule(singleGeneInput, "singleGeneInputTwo",
                         parent_session = parent_session,
                         humanGeneOptions = GlobalData$humanGeneOptions,
-                        mouseGeneOptions = GlobalData$mouseGeneOptions,
-                        species = species, selected = c("BRCA1", "Brca1"))
+                        # mouseGeneOptions = GlobalData$mouseGeneOptions,
+                        # species = species,
+                        selected = c("BRCA1", "Brca1"))
   tissueTypeTwo <- callModule(tissueTypeInput, "tissueTypeInputTwo",
                               parent_session = parent_session,
-                              mouseTissueOptions = GlobalData$mouseTissueOptions,
-                              humanTissueOptions = GlobalData$humanTissueOptions,
-                              species = species)
+                              # mouseTissueOptions = GlobalData$mouseTissueOptions,
+                              humanTissueOptions = GlobalData$humanTissueOptions
+                              # species = species
+                              )
   sampleTypeTwo <- callModule(sampleTypeInput, "sampleTypeInputTwo",
                               parent_session = parent_session,
-                              mouseTissueOptions = GlobalData$mouseTissueOptions,
+                              # mouseTissueOptions = GlobalData$mouseTissueOptions,
                               humanTissueOptions = GlobalData$humanTissueOptions,
-                              species = species, selected = "Cancer",
+                              # species = species,
+                              selected = "Cancer",
                               tissueType = tissueTypeTwo)
   
   
   observe({
     crossComparisonMode <- input$crossComparisonMode
-    speciesSelected <- input$species
+    # speciesSelected <- input$species
+    speciesSelected <- "Human"
     # Force input boxes to update if user chooses group mode
     tissueType <- callModule(tissueTypeInput, "tissueTypeInputOne",
                              parent_session = parent_session,
-                             mouseTissueOptions = GlobalData$mouseTissueOptions,
+                             # mouseTissueOptions = GlobalData$mouseTissueOptions,
                              humanTissueOptions = GlobalData$humanTissueOptions,
-                             species = species,
+                             # species = species,
                              crossComparisonMode = input$crossComparisonMode)
     sampleType <- callModule(sampleTypeInput, "tissueTypeInputOne",
                              parent_session = parent_session,
-                             mouseTissueOptions = GlobalData$mouseTissueOptions,
+                             # mouseTissueOptions = GlobalData$mouseTissueOptions,
                              humanTissueOptions = GlobalData$humanTissueOptions,
-                             species = species, 
+                             # species = species, 
                              tissueType = tissueType)
     tissueType <- callModule(tissueTypeInput, "tissueTypeInputTwo",
                              parent_session = parent_session,
-                             mouseTissueOptions = GlobalData$mouseTissueOptions,
+                             # mouseTissueOptions = GlobalData$mouseTissueOptions,
                              humanTissueOptions = GlobalData$humanTissueOptions,
-                             species = species,
+                             # species = species,
                              crossComparisonMode = input$crossComparisonMode)
     sampleType <- callModule(sampleTypeInput, "tissueTypeInputTwo",
                              parent_session = parent_session,
-                             mouseTissueOptions = GlobalData$mouseTissueOptions,
+                             # mouseTissueOptions = GlobalData$mouseTissueOptions,
                              humanTissueOptions = GlobalData$humanTissueOptions,
-                             species = species, 
+                             # species = species, 
                              tissueType = tissueType)
   })
   
@@ -1686,7 +1722,8 @@ geneVsGeneModeAnalysis <- function(input, output, session,
     tissueTypeTwo <- gsub(tissueTypeTwo, pattern = " ",replacement = "0")
     sampleTypeTwo <- sampleTypeTwo()
     sampleTypeTwo <- tolower(sampleTypeTwo)
-    species <- input$species
+    # species <- input$species
+    species <- "Human"
     gseaType <- gseaVec$chooseEnrichTypeTop
     if (gseaType == "Custom") {
       gseaType <- gseaVec$chooseEnrichType
@@ -1780,7 +1817,7 @@ geneVsGeneModeAnalysis <- function(input, output, session,
       
       res <- future({
         pairedRes <- correlationAnalyzeR::analyzeGenePairs(genesOfInterest = genesOfInterest, 
-                                                           Species = cleanResOne$selectedSpecies,
+                                                           # Species = cleanResOne$selectedSpecies,
                                                            returnDataOnly = T, runGSEA = F,
                                                            # nperm = 500, sampler = TRUE,
                                                            crossCompareMode = T, pool = pool)
@@ -1892,7 +1929,7 @@ geneVsGeneModeAnalysis <- function(input, output, session,
       pairedRes <- correlationAnalyzeR::analyzeGenePairs(genesOfInterest = genesOfInterest, 
                                                          Sample_Type = Sample_Type,
                                                          Tissue = Tissue, 
-                                                         Species = cleanResOne$selectedSpecies,
+                                                         # Species = cleanResOne$selectedSpecies,
                                                          GSEA_Type = gseaType, 
                                                          returnDataOnly = T,
                                                          TERM2GENE = TERM2GENE,
@@ -1940,13 +1977,14 @@ geneVsGeneModePlotsUI <- function(id) {
 }
 geneVsGeneModePlots <- function(input, output, session, 
                                 parent_session,
-                                GlobalData, dataTables, auth) {
+                                GlobalData, dataTables#, auth
+                                ) {
   
-  observe({
-    print(auth$result)
-    req(! auth$result)
-    return(NULL)
-  })
+  # observe({
+  #   print(auth$result)
+  #   req(! auth$result)
+  #   return(NULL)
+  # })
   
   # For group and normal mode
   primaryGene <- reactiveVal()
@@ -1975,12 +2013,12 @@ geneVsGeneModePlots <- function(input, output, session,
   ht <- reactiveVal()
   tmpscatterFile <- reactiveVal()
   # tmpHeatFile <- reactiveVal()
-  geneTPMBoxplot1 <- reactiveVal()
-  geneTPMBoxplot2 <- reactiveVal()
-  geneTPMData <- reactiveVal()
+  geneVSTBoxplot1 <- reactiveVal()
+  geneVSTBoxplot2 <- reactiveVal()
+  geneVSTData <- reactiveVal()
   
   # Only for normal mode
-  TPMData <- reactiveVal()
+  VSTData <- reactiveVal()
   # corrPlot <- reactiveVal()
   heatGenesVar <- reactiveVal()
   heatPathsVar <- reactiveVal()
@@ -2016,7 +2054,7 @@ geneVsGeneModePlots <- function(input, output, session,
         downloadsList$ready <- FALSE
         downloadsList$downloadDataPairsPath <- NULL
         downloadsList$correlationData <- NULL
-        downloadsList$downloadDataTPM <- NULL
+        downloadsList$downloadDataVST <- NULL
         pairedRes <- dataList[["geneVsGeneResults"]]
         species(dataList[["species"]])
         geneOne(dataList[["geneOne"]])
@@ -2044,24 +2082,24 @@ geneVsGeneModePlots <- function(input, output, session,
             uiName(paste0(geneOne(), " - normal vs. cancer"))
             ht(14)
           }
-          # Get TPM
-          geneTPMData(pairedRes$crossCompareTPM[["TPM_DF"]])
+          # Get VST
+          geneVSTData(pairedRes$crossCompareVST[["VST_DF"]])
           if (whichCompareGroups() == "cross_geneVsGene") {
-            geneTPMBoxplot1(ggpubr::ggpar(pairedRes$crossCompareTPM[["TPM_boxPlotOne"]], 
-                                          ylab = "Expression (log2[TPM+1])",
+            geneVSTBoxplot1(ggpubr::ggpar(pairedRes$crossCompareVST[["VST_boxPlotOne"]], 
+                                          ylab = "Expression (VST counts)",
                                           font.xtickslab = 14, font.y = 14, font.main = 18) +
                               theme(plot.margin=unit(c(.2, .2, .2, .4),"cm")))
-            geneTPMBoxplot2(ggpubr::ggpar(pairedRes$crossCompareTPM[["TPM_boxPlotTwo"]], 
-                                          ylab = "Expression (log2[TPM+1])",
+            geneVSTBoxplot2(ggpubr::ggpar(pairedRes$crossCompareVST[["VST_boxPlotTwo"]], 
+                                          ylab = "Expression (VST counts)",
                                           font.xtickslab = 14, font.y = 14, font.main = 18) +
                               theme(plot.margin=unit(c(.2, .2, .2, .4),"cm")))
           } else {
-            geneTPMBoxplot1(
-                            ggpubr::ggpar(pairedRes$crossCompareTPM[["TPM_boxPlot"]], 
-                                          ylab = "Expression (log2[TPM+1])",
+            geneVSTBoxplot1(
+                            ggpubr::ggpar(pairedRes$crossCompareVST[["VST_boxPlot"]], 
+                                          ylab = "Expression (VST counts)",
                                           font.xtickslab = 14, font.y = 14, font.main = 18) +
                               theme(plot.margin=unit(c(.2, .2, .2, .4),"cm")))
-            geneTPMBoxplot2(NULL)
+            geneVSTBoxplot2(NULL)
           }
         } else {
           groupMode(FALSE)
@@ -2095,13 +2133,13 @@ geneVsGeneModePlots <- function(input, output, session,
           on.exit(dataList$progress$close())
           correlations(pairedRes[["processedCorrelationsFrame"]])
           corrPlot(pairedRes[["compared"]][["correlationPlotBin"]])
-          TPMData(pairedRes[["compared"]][["TPM_Data"]])
-          geneTPMBoxplot1(
-                          ggpubr::ggpar(pairedRes[["compared"]][["TPM_boxPlot"]], 
-                                        ylab = "Expression (log2[TPM+1])",
+          VSTData(pairedRes[["compared"]][["VST_Data"]])
+          geneVSTBoxplot1(
+                          ggpubr::ggpar(pairedRes[["compared"]][["VST_boxPlot"]], 
+                                        ylab = "Expression (VST counts)",
                                         font.xtickslab = 14, font.y = 14, font.main = 18) +
                             theme(plot.margin=unit(c(.2, .2, .2, .4),"cm")))
-          geneTPMBoxplot2(NULL)
+          geneVSTBoxplot2(NULL)
           heatGenesVar(pairedRes[["compared"]][["correlationVarianceHeatmap"]])
           heatGenesSim(pairedRes[["compared"]][["correlationSimilarityHeatmap"]])
           heatPathsVar(pairedRes[["compared"]][["pathwayVarianceHeatmap"]])
@@ -2147,7 +2185,7 @@ geneVsGeneModePlots <- function(input, output, session,
       downloadsList$ready <- FALSE
       downloadsList$downloadDataPairsPath <- NULL
       downloadsList$correlationData <- NULL
-      downloadsList$downloadDataTPM <- NULL
+      downloadsList$downloadDataVST <- NULL
       pairedRes <- dataList[["geneVsGeneResults"]]
       species(dataList[["species"]])
       geneOne(dataList[["geneOne"]])
@@ -2175,27 +2213,27 @@ geneVsGeneModePlots <- function(input, output, session,
           uiName(paste0(geneOne(), " - normal vs. cancer"))
           ht(14)
         }
-        # Get TPM
-        geneTPMData(pairedRes$crossCompareTPM[["TPM_DF"]])
+        # Get VST
+        geneVSTData(pairedRes$crossCompareVST[["VST_DF"]])
         if (whichCompareGroups() == "cross_geneVsGene") {
-          geneTPMBoxplot1(
-                          ggpubr::ggpar(pairedRes$crossCompareTPM[["TPM_boxPlotOne"]],
-                                        ylab = "Expression (log2[TPM+1])",
+          geneVSTBoxplot1(
+                          ggpubr::ggpar(pairedRes$crossCompareVST[["VST_boxPlotOne"]],
+                                        ylab = "Expression (VST counts)",
                                         font.xtickslab = 14, font.y = 14, font.main = 18) +
                             theme(plot.margin=unit(c(.2, .2, .2, .4),"cm")))
-          geneTPMBoxplot2(
-                          ggpubr::ggpar(pairedRes$crossCompareTPM[["TPM_boxPlotTwo"]],
-                                        ylab = "Expression (log2[TPM+1])",
+          geneVSTBoxplot2(
+                          ggpubr::ggpar(pairedRes$crossCompareVST[["VST_boxPlotTwo"]],
+                                        ylab = "Expression (VST counts)",
                                         font.xtickslab = 14, font.y = 14, font.main = 18) +
                             theme(plot.margin=unit(c(.2, .2, .2, .4),"cm")))
         } else {
-          geneTPMBoxplot1(
-                          ggpubr::ggpar(pairedRes$crossCompareTPM[["TPM_boxPlot"]],
-                                        ylab = "Expression (log2[TPM+1])",
+          geneVSTBoxplot1(
+                          ggpubr::ggpar(pairedRes$crossCompareVST[["VST_boxPlot"]],
+                                        ylab = "Expression (VST counts)",
                                         font.xtickslab = 14, font.legend = 14,
                                         font.y = 14, font.main = 18) +
                             theme(plot.margin=unit(c(.2, .2, .2, .4),"cm")) + rremove("legend.title"))
-          geneTPMBoxplot2(NULL)
+          geneVSTBoxplot2(NULL)
         }
       } else {
         groupMode(FALSE)
@@ -2229,13 +2267,13 @@ geneVsGeneModePlots <- function(input, output, session,
         on.exit(dataList$progress$close())
         correlations(pairedRes[["processedCorrelationsFrame"]])
         corrPlot(pairedRes[["compared"]][["correlationPlotBin"]])
-        TPMData(pairedRes[["compared"]][["TPM_Data"]])
-        geneTPMBoxplot1(
-                        ggpubr::ggpar(pairedRes[["compared"]][["TPM_boxPlot"]],
-                                      ylab = "Expression (log2[TPM+1])",
+        VSTData(pairedRes[["compared"]][["VST_Data"]])
+        geneVSTBoxplot1(
+                        ggpubr::ggpar(pairedRes[["compared"]][["VST_boxPlot"]],
+                                      ylab = "Expression (VST counts)",
                                       font.y = 14, font.xtickslab = 14, font.main = 18) +
                           theme(plot.margin=unit(c(.2, .2, .2, .4),"cm")))
-        geneTPMBoxplot2(NULL)
+        geneVSTBoxplot2(NULL)
         heatGenesVar(pairedRes[["compared"]][["correlationVarianceHeatmap"]])
         heatGenesSim(pairedRes[["compared"]][["correlationSimilarityHeatmap"]])
         if ("pathwayVarianceHeatmap" %in% names(pairedRes[["compared"]])) {
@@ -2295,14 +2333,14 @@ geneVsGeneModePlots <- function(input, output, session,
       req((groupMode()))
       # invalidateLater(1000)
       if (whichCompareGroups() == "cross_geneVsGene") {
-        tagsTPMNow <- tagList(
+        tagsVSTNow <- tagList(
           br(),
           fluidRow(
             column(width = 12, 
-                   plotOutput(ns("geneTPMBoxplot2"))))
+                   plotOutput(ns("geneVSTBoxplot2"))))
         )
       } else {
-        tagsTPMNow <- br()
+        tagsVSTNow <- br()
       }
       
       tagList(
@@ -2313,8 +2351,8 @@ geneVsGeneModePlots <- function(input, output, session,
         hr(),
         fluidRow(
           column(width = 12, 
-                 plotOutput(ns("geneTPMBoxplot1")))),
-        tagsTPMNow
+                 plotOutput(ns("geneVSTBoxplot1")))),
+        tagsVSTNow
       )
     
       
@@ -2348,7 +2386,7 @@ geneVsGeneModePlots <- function(input, output, session,
         hr(),
         fluidRow(
           column(width = 10, offset = 1,
-                 plotOutput(ns("geneTPMBoxplot1")))),
+                 plotOutput(ns("geneVSTBoxplot1")))),
         br(),
         br(),
         hr(),
@@ -2434,16 +2472,16 @@ geneVsGeneModePlots <- function(input, output, session,
   })
   
   # Build shared UI elements
-  output$geneTPMBoxplot1 <- renderPlot({
-    req(geneTPMBoxplot1())
+  output$geneVSTBoxplot1 <- renderPlot({
+    req(geneVSTBoxplot1())
     heatReady(TRUE)
-    geneTPMBoxplot1()
+    geneVSTBoxplot1()
   })
   
   # Builg UI elements for group mode
-  output$geneTPMBoxplot2 <- renderPlot({
-    req(geneTPMBoxplot2())
-    geneTPMBoxplot2()
+  output$geneVSTBoxplot2 <- renderPlot({
+    req(geneVSTBoxplot2())
+    geneVSTBoxplot2()
   })
   
   # Build UI elements for normal mode
@@ -2470,14 +2508,14 @@ geneVsGeneModePlots <- function(input, output, session,
     print(corrPlot())
   })
   output$heatGenesVar <- renderPlot({
-    req(downloadsList$downloadDataTPM)
+    req(downloadsList$downloadDataVST)
     if (! tenSec()) {
       invalidateLater(1000)
     }
     heatGenesVar()
   })
   output$heatGenesSim <- renderPlot({
-    req(downloadsList$downloadDataTPM)
+    req(downloadsList$downloadDataVST)
     if (! tenSec()) {
       invalidateLater(1000)
     }
@@ -2541,7 +2579,7 @@ geneVsGeneModePlots <- function(input, output, session,
       "uiName" = paste0(strong("Correlation data: "), uiName()),
       "file" = ".tsv"
     )
-    downloadsList[["downloadDataTPM"]] <- list("content" = geneTPMData(),
+    downloadsList[["downloadDataVST"]] <- list("content" = geneVSTData(),
                                                "uiName" = paste0(strong("Expression: "),
                                                                  uiName()),
                                                "file" = ".tsv")
@@ -2567,8 +2605,8 @@ geneVsGeneModePlots <- function(input, output, session,
       "uiName" = paste0(strong("corGSEA results: "), specName()),
       "file" = ".tsv"
     )
-    downloadsList[['downloadDataTPM']] <- list(
-      "content" = TPMData(),
+    downloadsList[['downloadDataVST']] <- list(
+      "content" = VSTData(),
       "uiName" = paste0(strong("Expression: "), specName()),
       "file" = ".tsv"
     )
@@ -2581,7 +2619,7 @@ geneVsGeneModePlots <- function(input, output, session,
     req(dataTables$geneVsGeneModeData())
     req(preprocessed())    
     req(! processed())
-    req(downloadsList$downloadDataTPM)
+    req(downloadsList$downloadDataVST)
     req((! downloadsList$init))
     req(downloadsList$ready)
     if (! groupMode()) {
@@ -2619,8 +2657,8 @@ geneVsGeneListModeAnalysisUI <- function(id) {
                       "Primary gene"),
     multiGeneInputUI(ns("multiGeneInput"), 
                      "Secondary gene input"),
-    selectInput(inputId = ns("species"), label = "Select species",
-                choices = c("Human", "Mouse"), selected = "Human"),
+    # selectInput(inputId = ns("species"), label = "Select species",
+    #             choices = c("Human"), selected = "Human"),
     tissueTypeInputUI(ns("tissueTypeInput")),
     sampleTypeInputUI(ns("sampleTypeInput")),
     popify( #trigger = "focus",
@@ -2639,31 +2677,35 @@ geneVsGeneListModeAnalysisUI <- function(id) {
   )
 }
 geneVsGeneListModeAnalysis <- function(input, output, session, 
-                                       parent_session, GlobalData, pool, auth) {
+                                       parent_session, GlobalData, pool#, auth
+                                       ) {
   
-  observe({
-    req(! auth$result)
-    return(NULL)
-  })
+  # observe({
+  #   req(! auth$result)
+  #   return(NULL)
+  # })
   
-  species <- reactive({input$species})
+  # species <- reactive({input$species})
+  species <- "Human"
   do <- reactive({input$do})
   
   primaryGene <- callModule(singleGeneInput, "singleGeneInput",
                             parent_session = parent_session,
                             humanGeneOptions = GlobalData$humanGeneOptions,
-                            mouseGeneOptions = GlobalData$mouseGeneOptions,
-                            species = species)
+                            # mouseGeneOptions = GlobalData$mouseGeneOptions
+                            # species = species
+                            )
   tissueType <- callModule(tissueTypeInput, "tissueTypeInput",
                            parent_session = parent_session,
-                           mouseTissueOptions = GlobalData$mouseTissueOptions,
-                           humanTissueOptions = GlobalData$humanTissueOptions,
-                           species = species)
+                           # mouseTissueOptions = GlobalData$mouseTissueOptions,
+                           humanTissueOptions = GlobalData$humanTissueOptions
+                           # species = species
+                           )
   sampleType <- callModule(sampleTypeInput, "sampleTypeInput",
                            parent_session = parent_session,
-                           mouseTissueOptions = GlobalData$mouseTissueOptions,
+                           # mouseTissueOptions = GlobalData$mouseTissueOptions,
                            humanTissueOptions = GlobalData$humanTissueOptions,
-                           species = species, 
+                           # species = species, 
                            tissueType = tissueType)
   
   secondaryGenes <- callModule(multiGeneInput, "multiGeneInput")
@@ -2674,7 +2716,8 @@ geneVsGeneListModeAnalysis <- function(input, output, session,
     shiny::validate(need(primaryGene != "Loading ...", 
                          label = "Please select a primary gene."))
     secondaryGenes <- secondaryGenes()
-    species <- input$species
+    # species <- input$species
+    species <- "Human"
     sampleType <- sampleType()
     sampleType <- tolower(sampleType)
     tissueType <- tissueType()
@@ -2746,7 +2789,7 @@ geneVsGeneListModeAnalysis <- function(input, output, session,
     res <- future({
       correlationAnalyzeR::geneVsGeneListAnalyze(pairedGenesList = geneVsGeneListGenesList, 
                                                  Tissue = cleanRes$tissueType, pool = pool,
-                                                 Species = cleanRes$selectedSpecies, 
+                                                 # Species = cleanRes$selectedSpecies, 
                                                  Sample_Type = cleanRes$sampleType, 
                                                  plotLabels = F, plotMaxMinCorr = T, 
                                                  sigTest = sigTest, returnDataOnly = T,
@@ -2785,11 +2828,12 @@ geneVsGeneListModePlotsUI <- function(id) {
 }
 geneVsGeneListModePlots <- function(input, output, session, 
                                     parent_session,
-                                    GlobalData, dataTables, auth) {
-  observe({
-    req(! auth$result)
-    return(NULL)
-  })
+                                    GlobalData, dataTables#, auth
+                                    ) {
+  # observe({
+  #   req(! auth$result)
+  #   return(NULL)
+  # })
   
   downloadsList <- reactiveValues()
   uiName <- reactiveVal()
@@ -3073,8 +3117,8 @@ topologyModeAnalysisUI <- function(id) {
   ns <- NS(id)
   tagList(
     multiGeneInputUI(ns("multiGeneInput"), "Gene list input"),
-    selectInput(inputId = ns("species"), label = "Select species",
-                choices = c("Human", "Mouse"), selected = "Human"),
+    # selectInput(inputId = ns("species"), label = "Select species",
+    #             choices = c("Human"), selected = "Human"),
     tissueTypeInputUI(ns("tissueTypeInput")),
     sampleTypeInputUI(ns("sampleTypeInput")),
     checkboxGroupInput(inputId = ns("crossComparisonType"), selected = c("PCA",
@@ -3092,30 +3136,34 @@ topologyModeAnalysisUI <- function(id) {
   )
 }
 topologyModeAnalysis <- function(input, output, session, 
-                                 parent_session, GlobalData, pool, auth) {
+                                 parent_session, GlobalData, pool#, auth
+                                 ) {
   
-  observe({
-    req(! auth$result)
-    return(NULL)
-  })
+  # observe({
+  #   req(! auth$result)
+  #   return(NULL)
+  # })
   
-  species <- reactive({input$species})
+  species <- "Human"
+  # species <- reactive({input$species})
   secondaryGenes <- callModule(multiGeneInput, "multiGeneInput")
   tissueType <- callModule(tissueTypeInput, "tissueTypeInput",
                            parent_session = parent_session,
-                           mouseTissueOptions = GlobalData$mouseTissueOptions,
-                           humanTissueOptions = GlobalData$humanTissueOptions,
-                           species = species)
+                           # mouseTissueOptions = GlobalData$mouseTissueOptions,
+                           humanTissueOptions = GlobalData$humanTissueOptions
+                           # species = species
+                           )
   sampleType <- callModule(sampleTypeInput, "sampleTypeInput",
                            parent_session = parent_session,
-                           mouseTissueOptions = GlobalData$mouseTissueOptions,
+                           # mouseTissueOptions = GlobalData$mouseTissueOptions,
                            humanTissueOptions = GlobalData$humanTissueOptions,
-                           species = species, 
+                           # species = species, 
                            tissueType = tissueType)
   
   data <- eventReactive(eventExpr = input$do, {
     secondaryGenes <- secondaryGenes()
-    species <- input$species
+    # species <- input$species
+    species <- "Human"
     tissueType <- tissueType()
     tissueType <- tolower(tissueType)
     tissueType <- gsub(tissueType, pattern = " ", replacement = "0")
@@ -3203,8 +3251,9 @@ topologyModeAnalysis <- function(input, output, session,
                                                     returnDataOnly = T, 
                                                     pathwayEnrichment = F, 
                                                     crossComparisonType = crossComparisonType,
-                                                    Sample_Type = cleanRes$sampleType, 
-                                                    Species = cleanRes$selectedSpecies)
+                                                    Sample_Type = cleanRes$sampleType
+                                                    # Species = cleanRes$selectedSpecies
+                                                    )
       }, globals = list(cleanRes = cleanRes,
                         pool = NULL,
                         crossComparisonType = crossComparisonType)) %...>%
@@ -3225,8 +3274,9 @@ topologyModeAnalysis <- function(input, output, session,
                                                          returnDataOnly = T, 
                                                          pathwayEnrichment = F, 
                                                          crossComparisonType = crossComparisonType,
-                                                         Sample_Type = cleanRes$sampleType, 
-                                                         Species = cleanRes$selectedSpecies)
+                                                         Sample_Type = cleanRes$sampleType
+                                                         # Species = cleanRes$selectedSpecies
+                                                         )
       res <- list("topologyModeData" = data,
                   "species" = species,
                   "crossComparisonType" = crossComparisonType,
@@ -3310,12 +3360,13 @@ topologyModePlotsUI <- function(id) {
 }
 topologyModePlots <- function(input, output, session,
                               parent_session,
-                              GlobalData, dataTables, auth) {
+                              GlobalData, dataTables#, auth
+                              ) {
   
-  observe({
-    req(! auth$result)
-    return(NULL)
-  })
+  # observe({
+  #   req(! auth$result)
+  #   return(NULL)
+  # })
   
   hideTab(inputId = "topologyNavs", target = "dimReduction", 
           session = session)

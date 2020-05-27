@@ -50,11 +50,11 @@ if (! dir.exists("www/tmp")) {
 
 # Load connections
 pool <- pool::dbPool(
-  drv = RMySQL::MySQL(max.con = 150),
-  user = "public-rds-user", port = 3306,
-  dbname="bishoplabdb", 
-  password='public-user-password', maxSize = Inf,
-  host="bishoplabdb.cyss3bq5juml.us-west-2.rds.amazonaws.com"
+  drv = RMySQL::MySQL(),
+  user = "public-rds-user@m2600az-db01p.mysql.database.azure.com", port = 3306,
+  dbname="correlation_analyzer",
+  password='public-user-password',
+  host="m2600az-db01p.mysql.database.azure.com"
 )
 print("Pool connected")
 # lapply( DBI::dbListConnections( DBI::dbDriver( drv = "MySQL")), DBI::dbDisconnect)
@@ -72,22 +72,22 @@ onStop(function() {
 # DBI::dbListConnections( DBI::dbDriver( drv = "MySQL"))
 
 ui <- tagList(
-  # authentication module
-  auth_ui(
-    id = "auth", 
-    tag_img = tags$img(
-      src = "android-chrome-256x256.png", width = 100
-    ),
-    tag_div = tags$div(
-      tags$p(
-        "For any questions, please  contact ",
-        tags$a(
-          href = "mailto:millerh1@livemail.uthscsa.edu?Subject=Correlation%20AnalyzeR",
-          target="_top", "administrator"
-        )
-      )
-    )
-  ),
+  # # authentication module
+  # auth_ui(
+  #   id = "auth", 
+  #   tag_img = tags$img(
+  #     src = "android-chrome-256x256.png", width = 100
+  #   ),
+  #   tag_div = tags$div(
+  #     tags$p(
+  #       "For any questions, please  contact ",
+  #       tags$a(
+  #         href = "mailto:millerh1@livemail.uthscsa.edu?Subject=Correlation%20AnalyzeR",
+  #         target="_top", "administrator"
+  #       )
+  #     )
+  #   )
+  # ),
   
   ## result of authentication
   # verbatimTextOutput(outputId = "res_auth"),
@@ -241,13 +241,13 @@ ui <- tagList(
 server <- function(input, output, session) {
   
   
-  # authentication module
-  auth <- callModule(
-    module = auth_server,
-    id = "auth",
-    check_credentials = check_credentials(credentials)
-  )
-  
+  # # authentication module
+  # auth <- callModule(
+  #   module = auth_server,
+  #   id = "auth",
+  #   check_credentials = check_credentials(credentials)
+  # )
+  # 
   # output$res_auth <- renderPrint({
   #   reactiveValuesToList(auth)
   # })
@@ -329,43 +329,51 @@ server <- function(input, output, session) {
                                                    id = "singleModeAnalysis", 
                                                    parent_session = parent_session, 
                                                    GlobalData = GlobalData,
-                                                   pool = pool, auth = auth)
+                                                   pool = pool#, auth = auth
+                                                   )
   geneVsGeneModeData[["geneVsGeneModeData"]] <- callModule(module = geneVsGeneModeAnalysis, 
                                                            id = "geneVsGeneModeAnalysis", 
                                                            parent_session = parent_session, 
                                                            GlobalData = GlobalData,
-                                                           pool = pool, auth = auth)
+                                                           pool = pool#, auth = auth
+                                                           )
   geneVsGeneListModeData[["geneVsGeneListModeData"]] <- callModule(module = geneVsGeneListModeAnalysis, 
                                                                    id = "geneVsGeneListModeAnalysis", 
                                                                    parent_session = parent_session, 
                                                                    GlobalData = GlobalData,
-                                                                   pool = pool, auth = auth)
+                                                                   pool = pool#, auth = auth
+                                                                   )
   topologyModeData[["topologyModeData"]] <- callModule(module = topologyModeAnalysis, 
                                                        id = "topologyModeAnalysis", 
                                                        parent_session = parent_session, 
                                                        GlobalData = GlobalData,
-                                                       pool = pool, auth = auth)
+                                                       pool = pool#, auth = auth
+                                                       )
   
   
   callModule(module = singleModePlots,
              id = "singleModePlots",
              dataTables = singleModeData,
-             parent_session = session, auth = auth)
+             parent_session = session#, auth = auth
+             )
   callModule(module = geneVsGeneModePlots,
              id = "geneVsGeneModePlots",
              dataTables = geneVsGeneModeData,
              parent_session = session,
-             GlobalData = GlobalData, auth = auth)
+             GlobalData = GlobalData#, auth = auth
+             )
   callModule(module = geneVsGeneListModePlots,
              id = "geneVsGeneListModePlots",
              dataTables = geneVsGeneListModeData,
              parent_session = session,
-             GlobalData = GlobalData, auth = auth)
+             GlobalData = GlobalData#, auth = auth
+             )
   callModule(module = topologyModePlots,
              id = "topologyModePlots",
              dataTables = topologyModeData,
              parent_session = session,
-             GlobalData = GlobalData, auth = auth)
+             GlobalData = GlobalData#, auth = auth
+             )
   
 }
 

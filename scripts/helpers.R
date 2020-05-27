@@ -19,7 +19,7 @@ helpButton <- function(message) {
 }
 
 # Get TERM2GENE from MDF object
-MDFtoTERM2GENE <- function(MDF, GSEA_Type, species) {
+MDFtoTERM2GENE <- function(MDF, GSEA_Type, species = "hsapiens") {
   
   # # Bug testing
   # GSEA_Type <- "Basic"
@@ -151,7 +151,8 @@ symbolConverter <- function(symbolVec, species, pool) {
   sqlQuery <- 'SELECT * FROM alias, gene_info WHERE alias._id == gene_info._id;'
   aliasSymbol <- DBI::dbGetQuery(dbCon, sqlQuery)
   aliasSymbol <- as.data.frame(aliasSymbol)
-  avgenes <- correlationAnalyzeR::getAvailableGenes(Species = species, pool = pool)
+  avgenes <- correlationAnalyzeR::getAvailableGenes(#Species = species,
+                                                    pool = pool)
   if (is.null(avgenes)) {
     stop("Unable to connect to database. Please contact package maintainer",
          " if you believe this is in error. ")
@@ -233,7 +234,8 @@ createGeneGuide <- function() {
   sqlQuery <- 'SELECT * FROM alias, gene_info WHERE alias._id == gene_info._id;'
   aliasSymbol <- DBI::dbGetQuery(dbCon, sqlQuery)
   aliasSymbol <- as.data.frame(aliasSymbol)
-  hsgenes <- correlationAnalyzeR::getAvailableGenes(Species = 'hsapiens')
+  hsgenes <- correlationAnalyzeR::getAvailableGenes(#Species = 'hsapiens'
+    )
   aliasSymbol <- aliasSymbol[which(aliasSymbol$symbol %in% hsgenes$geneName),]
   humanSymbols <- aliasSymbol[,c(2, 5, 4)]
   toAdd <- data.frame(alias_symbol = humanSymbols$symbol, 
@@ -247,7 +249,8 @@ createGeneGuide <- function() {
   sqlQuery <- 'SELECT * FROM alias, gene_info WHERE alias._id == gene_info._id;'
   aliasSymbol <- DBI::dbGetQuery(dbCon, sqlQuery)
   aliasSymbol <- as.data.frame(aliasSymbol)
-  mmgenes <- correlationAnalyzeR::getAvailableGenes(Species = 'mmusculus', pool = pool)
+  mmgenes <- correlationAnalyzeR::getAvailableGenes(#Species = 'mmusculus', 
+                                                    pool = pool)
   aliasSymbol <- aliasSymbol[which(aliasSymbol$symbol %in% mmgenes$geneName),]
   mouseSymbols <- aliasSymbol[,c(2, 5, 4)]
   toAdd <- data.frame(alias_symbol = mouseSymbols$symbol, 
