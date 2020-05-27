@@ -21,8 +21,8 @@ source("scripts/modules.R")
 source("scripts/helpers.R")
 load("data/GlobalData.RData")
 
-credentials <- read.csv("accessKeys.csv", col.names = c("user", "password"),
-                         stringsAsFactors = FALSE)
+# credentials <- read.csv("accessKeys.csv", col.names = c("user", "password"),
+#                          stringsAsFactors = FALSE)
 
 
 # Get hardware info for load monitoring
@@ -39,7 +39,8 @@ if (Sys.info()[['sysname']] == "Windows") {
   totalMemory <- benchmarkme::get_ram()
   print(totalMemory)
 }
-plan(sequential)
+# plan(sequential)
+plan(multiprocess)
 totalCores <- parallel::detectCores(logical = FALSE)
 totalThreads <- parallel::detectCores(logical = TRUE)
 

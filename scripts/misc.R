@@ -16,7 +16,7 @@ print("Pool connected")
 tissues <- unique(
   gsub(
     correlationAnalyzeR::getTissueTypes(#'hsapiens',
-                                        pool = pool),
+                                        pool = NULL),
     pattern = " - .+", replacement = ""
   )
 )
@@ -24,8 +24,8 @@ humanTissueOptions <- list()
 for (i in 1:length(tissues)) {
   tissue <- tissues[i]
   ll <- correlationAnalyzeR::getTissueTypes(# 'hsapiens',
-                                            pool = pool)
-  ll <- ll[grep(pattern = tissue, x = ll)]
+                                            pool = NULL)
+  ll <- ll[grep(pattern = paste0("^", tissue), x = ll)]
   ll <- gsub(pattern = ".+ - ", x = ll, replacement = "")
   humanTissueOptions[[i]] <- ll
   names(humanTissueOptions)[i] <- tissue
@@ -106,6 +106,7 @@ GlobalData <- list("HS_basicGeneInfo" = HS_basicGeneInfo,
                    'MDF' = MDF)
 save(GlobalData, file = "data/GlobalData.RData")
 load("data/GlobalData.RData")
+# GlobalData$humanTissueOptions <- humanTissueOptions
 # GlobalData <- GlobalData[-8]
 # save(GlobalData, file = "data/GlobalData.RData")
 
