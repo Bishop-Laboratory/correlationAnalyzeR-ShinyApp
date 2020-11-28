@@ -1,7 +1,7 @@
 #!/bin/bash
 
 appName="correlationAnalyzeR-ShinyApp" # Needs to be same as github repo
-gitLink="https://github.com/millerh1/correlationAnalyzeR-ShinyApp.git"
+gitLink="https://github.com/Bishop-Laboratory/correlationAnalyzeR-ShinyApp.git"
 
 # Most of this is root-only
 sudo su
