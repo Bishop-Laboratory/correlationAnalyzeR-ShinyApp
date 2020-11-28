@@ -23,7 +23,7 @@ R -e "BiocManager::install(c('org.Mm.eg.db', 'org.Hs.eg.db','clusterProfiler','l
 R -e "install.packages('metaMA', repos = 'http://cran.rstudio.com/')"
 R -e "devtools::install_github('nik01010/dashboardthemes')"
 R -e "devtools::install_github('andrewsali/shinycssloaders')"
-R -e "devtools::install_github('millerh1/correlationAnalyzeR')"
+R -e "devtools::install_github('Bishop-Laboratory/correlationAnalyzeR')"
 
 # Set up shiny server
 R -e "install.packages('shiny', repos = 'http://cran.rstudio.com/')"
@@ -42,7 +42,7 @@ apt-get -y install libxkbcommon-x11-dev
 
 # Configure shiny server
 appName="correlationAnalyzeR-ShinyApp" # Needs to be same as github repo
-gitLink="https://github.com/millerh1/correlationAnalyzeR-ShinyApp.git"
+gitLink="https://github.com/Bishop-Laboratory/correlationAnalyzeR-ShinyApp.git"
 #chmod 777 /srv/shiny-server
 #chmod 777 /etc/shiny-server
 #cd /srv/shiny-server
