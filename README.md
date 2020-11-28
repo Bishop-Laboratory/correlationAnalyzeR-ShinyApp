@@ -8,4 +8,4 @@ To set up a local shiny server running correlationAnalyzeR-ShinyApp, download an
 This script should automatically install all necessary dependencies (it was tested using a ubuntu AWS EC2 instance). To complete configuration of the shiny server, follow the instructions in the setUpServer.sh script comments about how to edit the configuration file.
 
 
-`sudo bash correlationAnalyzeR-ShinyApp/setUpServer.sh`
+`sudo bash correlationAnalyzeR-ShinyApp/Scripts/setUpServer.sh`
