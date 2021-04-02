@@ -759,6 +759,18 @@ singleModeAnalysis <- function(input, output, session,
                             session = session,
                             pool = pool)
     
+    if (is.null(cleanRes$primaryGene)) {
+      showNotification(paste0("The selected gene ", 
+                              primaryGene, " is not found. Please ",
+                              "try another gene name or alias. Please contact",
+                              " the package maintainer by filing an issue on GitHub",
+                              " (Bishop-Laboratory/correlationAnalyzer-ShinyApp)",
+                              " if you see this error."),
+                       type = "error", duration = 16)
+      progress$close()
+    }
+    shiny::validate(need(! is.null(cleanRes$primaryGene), label = "Valid gene") )
+        
     if (input$crossComparisonMode) {
       progress$inc(.2, message = paste0("Calculating group comparisons for ", 
                                         primaryGene, " ... "))
@@ -1829,7 +1841,34 @@ geneVsGeneModeAnalysis <- function(input, output, session,
                                GlobalData = GlobalData,
                                session = session,
                                pool = pool)
+    
     genesOfInterest <- c(cleanResOne$primaryGene, cleanResTwo$primaryGene)
+    
+    if (is.null(cleanResOne$primaryGene)) {
+      showNotification(paste0("The selected gene ", 
+                              geneOne, " is not found. Please ",
+                              "try another gene name or alias. Please contact",
+                              " the package maintainer by filing an issue on GitHub",
+                              " (Bishop-Laboratory/correlationAnalyzer-ShinyApp)",
+                              " if you see this error."),
+                       type = "error", duration = 16)
+      progress$close()
+    }
+    shiny::validate(need(! is.null(cleanResOne$primaryGene), label = "Valid gene") )
+    
+    if (is.null(cleanResTwo$primaryGene)) {
+      showNotification(paste0("The selected gene ", 
+                              geneTwo, " is not found. Please ",
+                              "try another gene name or alias. Please contact",
+                              " the package maintainer by filing an issue on GitHub",
+                              " (Bishop-Laboratory/correlationAnalyzer-ShinyApp)",
+                              " if you see this error."),
+                       type = "error", duration = 16)
+      progress$close()
+    }
+    shiny::validate(need(! is.null(cleanResTwo$primaryGene), label = "Valid gene") )
+    
+    
     if (input$crossComparisonMode) {
       if (cleanResOne$selectedSpecies == "mmusculus" &
           length(unique(genesOfInterest)) == 1) {
