@@ -9,7 +9,7 @@ gitLink="https://github.com/Bishop-Laboratory/correlationAnalyzeR-ShinyApp.git"
 # Get the correct version of R
 apt -y install apt-transport-https software-properties-common
 apt-key adv --keyserver keyserver.ubuntu.com --recv-keys E298A3A825C0D65DFD57CBB651716619E084DAB9
-add-apt-repository 'deb https://cloud.r-project.org/bin/linux/ubuntu bionic-cran35/'
+add-apt-repository 'deb https://cloud.r-project.org/bin/linux/ubuntu bionic-cran40/'
 apt update
 apt -y install r-base
 
