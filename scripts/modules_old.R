@@ -2179,12 +2179,12 @@ geneVsGeneModePlots <- function(input, output, session,
                               theme(plot.margin=unit(c(.2, .2, .2, .4),"cm")))
           } else {
             # No VST Plot for you!
-            geneVSTBoxplot1(NULL)
-            # geneVSTBoxplot1(
-            #   ggpubr::ggpar(pairedRes$crossCompareVST[["VST_boxPlot"]], 
-            #                 ylab = "Expression (VST counts)",
-            #                 font.xtickslab = 14, font.y = 14, font.main = 18) +
-            #     theme(plot.margin=unit(c(.2, .2, .2, .4),"cm")))
+            # geneVSTBoxplot1(NULL)
+            geneVSTBoxplot1(
+              ggpubr::ggpar(pairedRes$crossCompareVST[["VST_boxPlot"]],
+                            ylab = "Expression (VST counts)",
+                            font.xtickslab = 14, font.y = 14, font.main = 18) +
+                theme(plot.margin=unit(c(.2, .2, .2, .4),"cm")))
             geneVSTBoxplot2(NULL)
           }
         } else {
