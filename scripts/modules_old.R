@@ -3,9 +3,7 @@
 # Input types
 tissueTypeInputUI <- function(id) {
   ns <- NS(id)
-  
   print("tissueTypeInputUI")
-  
   selectizeInput(inputId = ns("tissueType"), label = "Select tissue type",
                  choices = c("All"), 
                  multiple = F)
@@ -121,7 +119,9 @@ singleGeneInputUI <- function(id, label) {
   
   tagList(
     selectizeInput(inputId = ns("primaryGene"), 
-                   label =  label,
+                   label =  span(label, 
+                                 helpButton(message = paste0('Select any gene or gene alias. Delete "BRCA1" and ',
+                                                             'begin typing a gene name to see options.'))),
                    choices = c("Loading ..."), selected = "Loading ...",
                    multiple = F, options = list(maxOptions = 100))
   )
@@ -167,9 +167,22 @@ multiGeneInputUI <- function(id, label) {
   tagList(
     radioButtons(inputId = ns("selectMultiInputType"), 
                  choices = c("Gene list", 
-                             "Geneset annotations"), 
+                            "Geneset annotations"), 
                  selected = "Gene list", 
-                 label = label),
+                 label = span(label, " ",
+                              tipify(
+                                span(
+                                  HTML('<i class="fa fa-question-circle"></i>')), 
+                                title = paste0('Enter a list of genes (Gene list) or select',
+                                               ' an MSigDB gene set (Geneset annotations). ',
+                                               'All gene sets in the MSigDB are available here. To find',
+                                               ' details about each, visit the link on the right labeled "MSigDB".'),
+                                placement = "right",
+                                options=list(container="body")
+                              ), " ", 
+                              a(href = "http://www.gsea-msigdb.org/gsea/msigdb/index.jsp", "MSigDB",
+                                target="_blank")
+                              )),
     uiOutput(ns("multiSelectUI"))
   )
 }
@@ -1016,8 +1029,8 @@ singleModePlots <- function(input, output, session,
                    'zoomIn2d', 'zoomOut2d',
                    'lasso2d'),
                  toImageButtonOptions= list(filename = paste0(fileName(),
-                                                              "_heatMap.png"),
-                                            format = "png",
+                                                              "_heatMap.svg"),
+                                            format = "svg",
                                             width = width,
                                             height = 500))
         heatMapVar(plt)
@@ -1066,10 +1079,11 @@ singleModePlots <- function(input, output, session,
                    'zoomIn2d', 'zoomOut2d',
                    'lasso2d'),
                  toImageButtonOptions= list(filename = paste0(fileName(),
-                                                              "_heatMap.png"),
-                                            format = "png",
+                                                              "_heatMap.svg"),
+                                            format = "svg",
                                             width = width,
-                                            height = 500))
+                                            height = 500)
+                 )
         heatMapCo(plt)
         
         
@@ -1245,7 +1259,19 @@ singleModePlots <- function(input, output, session,
         req(! is.null(eresCor()))
         tagList(
           hr(),
-          h2("corGSEA results"),
+          h2(span("corGSEA results", helpButton(paste0('The corGSEA method performs pre-ranked GSEA',
+                                                              ' using the correlation coefficients as',
+                                                              ' the ranking metric. The significant results',
+                                                              ' are displayed in the table and can be visualized',
+                                                              ' using GSEA plots. For each plot,',
+                                                              ' the vertical lines represent genes belonging to ',
+                                                              ' the selected geneset. They are positioned along the X axis',
+                                                              ' based on their degree of correlation. The leftmost',
+                                                              ' gene has the highest correlation, the rightmost has the lowest.',
+                                                              ' The upper Y axis, "Ranked List Metric", is the correlation values.',
+                                                              ' The lower Y axis is',
+                                                              ' the enrichment score as determined by the GSEA algorithm. For',
+                                                              ' additional details, please see the "Help" section.')))),
           hr(),
           fluidRow(
             column(width = 6, 
@@ -1822,7 +1848,7 @@ geneVsGeneModeAnalysis <- function(input, output, session,
         
       }
       # # Bug testing
-      # genesOfInterest <- c("ATM", "SLC3A2")
+      # genesOfInterest <- c("BRCA1", "BRCA1")
       progress$inc(.1, message = "Running group mode ... ")
       progress$inc(.1, detail = "This may take ~1 minute to complete.")
       tmp <- paste0("www/tmp/", as.character(session$token)[1])
@@ -2113,11 +2139,13 @@ geneVsGeneModePlots <- function(input, output, session,
                                           font.xtickslab = 14, font.y = 14, font.main = 18) +
                               theme(plot.margin=unit(c(.2, .2, .2, .4),"cm")))
           } else {
-            geneVSTBoxplot1(
-              ggpubr::ggpar(pairedRes$crossCompareVST[["VST_boxPlot"]], 
-                            ylab = "Expression (VST counts)",
-                            font.xtickslab = 14, font.y = 14, font.main = 18) +
-                theme(plot.margin=unit(c(.2, .2, .2, .4),"cm")))
+            # No VST Plot for you!
+            geneVSTBoxplot1(NULL)
+            # geneVSTBoxplot1(
+            #   ggpubr::ggpar(pairedRes$crossCompareVST[["VST_boxPlot"]], 
+            #                 ylab = "Expression (VST counts)",
+            #                 font.xtickslab = 14, font.y = 14, font.main = 18) +
+            #     theme(plot.margin=unit(c(.2, .2, .2, .4),"cm")))
             geneVSTBoxplot2(NULL)
           }
         } else {
@@ -2153,11 +2181,13 @@ geneVsGeneModePlots <- function(input, output, session,
           correlations(pairedRes[["processedCorrelationsFrame"]])
           corrPlot(pairedRes[["compared"]][["correlationPlotBin"]])
           VSTData(pairedRes[["compared"]][["VST_Data"]])
-          geneVSTBoxplot1(
-            ggpubr::ggpar(pairedRes[["compared"]][["VST_boxPlot"]], 
-                          ylab = "Expression (VST counts)",
-                          font.xtickslab = 14, font.y = 14, font.main = 18) +
-              theme(plot.margin=unit(c(.2, .2, .2, .4),"cm")))
+          # No VST because bad stats.
+          geneVSTBoxplot1(NULL)
+          # geneVSTBoxplot1(
+          #   ggpubr::ggpar(pairedRes[["compared"]][["VST_boxPlot"]], 
+          #                 ylab = "Expression (VST counts)",
+          #                 font.xtickslab = 14, font.y = 14, font.main = 18) +
+          #     theme(plot.margin=unit(c(.2, .2, .2, .4),"cm")))
           geneVSTBoxplot2(NULL)
           heatGenesVar(pairedRes[["compared"]][["correlationVarianceHeatmap"]])
           heatGenesSim(pairedRes[["compared"]][["correlationSimilarityHeatmap"]])
@@ -2287,11 +2317,13 @@ geneVsGeneModePlots <- function(input, output, session,
         correlations(pairedRes[["processedCorrelationsFrame"]])
         corrPlot(pairedRes[["compared"]][["correlationPlotBin"]])
         VSTData(pairedRes[["compared"]][["VST_Data"]])
-        geneVSTBoxplot1(
-          ggpubr::ggpar(pairedRes[["compared"]][["VST_boxPlot"]],
-                        ylab = "Expression (VST counts)",
-                        font.y = 14, font.xtickslab = 14, font.main = 18) +
-            theme(plot.margin=unit(c(.2, .2, .2, .4),"cm")))
+        # No VST for you!
+        geneVSTBoxplot1(NULL)
+        # geneVSTBoxplot1(
+        #   ggpubr::ggpar(pairedRes[["compared"]][["VST_boxPlot"]],
+        #                 ylab = "Expression (VST counts)",
+        #                 font.y = 14, font.xtickslab = 14, font.main = 18) +
+        #     theme(plot.margin=unit(c(.2, .2, .2, .4),"cm")))
         geneVSTBoxplot2(NULL)
         heatGenesVar(pairedRes[["compared"]][["correlationVarianceHeatmap"]])
         heatGenesSim(pairedRes[["compared"]][["correlationSimilarityHeatmap"]])
@@ -2400,14 +2432,14 @@ geneVsGeneModePlots <- function(input, output, session,
       tagList(
         h1("Gene vs Gene Results"),
         toAdd,
-        hr(),
-        h2("Compared gene expression"),
-        hr(),
-        fluidRow(
-          column(width = 10, offset = 1,
-                 plotOutput(ns("geneVSTBoxplot1")))),
-        br(),
-        br(),
+        # hr(),
+        # h2("Compared gene expression"),
+        # hr(),
+        # fluidRow(
+        #   column(width = 10, offset = 1,
+        #          plotOutput(ns("geneVSTBoxplot1")))),
+        # br(),
+        # br(),
         hr(),
         h2("Compared correlations"),
         hr(),
@@ -2433,9 +2465,9 @@ geneVsGeneModePlots <- function(input, output, session,
     req(dataTables$geneVsGeneModeData())
     req(processed())
     ns <- session$ns
-    if(! isolate({heatReady()})) {
-      invalidateLater(500)
-    }
+    # if(! isolate({heatReady()})) {
+    #   invalidateLater(500)
+    # }
     if (! groupMode()) {
       req((! groupMode()))
       if (runGSEA()) {
@@ -2770,6 +2802,16 @@ geneVsGeneListModeAnalysis <- function(input, output, session,
                             GlobalData = GlobalData,
                             session = session,
                             pool = pool)
+    print("Clean done")
+    print(cleanRes$primaryGene)
+    pass <- 1
+    if (is.null(cleanRes$primaryGene)) {
+      showNotification(ui = paste0(primaryGene, " not found. Please try another ",
+                                   "name for that gene. Please contact maintainer if you see this error."), 
+                       duration = 8, type = 'error')
+      progress$close()
+      pass <- 0
+    }
     if (is.null(cleanRes$secondaryGenes) & ! cleanRes$geneSetInputType) {
       showNotification(ui = "No valid secondary genes provided.", 
                        duration = 8, type = 'error')
@@ -2796,10 +2838,13 @@ geneVsGeneListModeAnalysis <- function(input, output, session,
                     "like to test more, please use the R-package of correlationAnalyzeR.")
       showNotification(ui = msg, 
                        duration = 8, type = 'error')
+      pass <- 0
       progress$close()
     }
     shiny::validate(need(length(geneVsGeneListGenesList[[1]]) < 501, 
                          label = "Use may not enter > 500 genes"))
+    shiny::validate(need(pass == 1, 
+                         label = "You must provide at least 3 valid secondary genes."))
     progress$inc(.2, message = "Analyzing correlations ... ")
     
     # # BugTesting
@@ -2966,7 +3011,7 @@ geneVsGeneListModePlots <- function(input, output, session,
                                            'select2d', 'lasso2d'),
              toImageButtonOptions= list(filename = paste0(fileName(),
                                                           "_geneVsGeneListMode_correlationHistogram"),
-                                        format = "png",
+                                        format = "svg",
                                         width = 1000,
                                         height = 600))
     
@@ -3101,7 +3146,7 @@ geneVsGeneListModePlots <- function(input, output, session,
                                            'select2d', 'lasso2d'),
              toImageButtonOptions= list(filename = paste0(fileName(),
                                                           "_correlation_sigTest"),
-                                        format = "png",
+                                        format = "svg",
                                         width = 1000,
                                         height = 600))
     p3
@@ -3504,9 +3549,15 @@ topologyModePlots <- function(input, output, session,
                 plt <- ggplotly(plt)
                 plt <- plt %>%
                   config(plot_ly(), 
+                         modeBarButtonsToRemove = list(
+                           'hoverCompareCartesian',
+                           'hoverClosestCartesian',
+                           'zoomIn2d', 'zoomOut2d',
+                           'lasso2d'),
+                         displaylogo = F,
                          toImageButtonOptions = list(
-                           filename = paste0(fileName(), "_topologyMode_PCA.png"),
-                           format = "png",
+                           filename = paste0(fileName(), "_topologyMode_PCA.svg"),
+                           format = "svg",
                            width = 800,
                            height = 600))
               } else {
@@ -3520,10 +3571,17 @@ topologyModePlots <- function(input, output, session,
                   layout(title = "PCA with clustering",
                          xaxis = list(title = xaxistext),
                          yaxis = list(title = yaxistext)) %>%
-                  config(plot_ly(),
+                  config(plot_ly(), 
+                         modeBarButtonsToRemove = list(
+                           'hoverCompareCartesian',
+                           'hoverClosestCartesian',
+                           'zoomIn2d', 'zoomOut2d',
+                           'lasso2d'),
+                         displaylogo = F,
                          toImageButtonOptions = list(
+                           format = "svg",
                            filename = paste0(fileName(),
-                                             "_topologyMode_clusteredPCA.png")))
+                                             "_topologyMode_clusteredPCA.svg")))
               }
             } else if (dimMode() == "TSNE") {
               colnames(dt_data)[1] <- "geneName"
@@ -3537,15 +3595,16 @@ topologyModePlots <- function(input, output, session,
                             xaxis = list(title = xaxistext),
                             yaxis = list(title = yaxistext))
               plt <- plt %>%
-                config(plot_ly(), displaylogo = F,
+                config(plot_ly(), 
                        modeBarButtonsToRemove = list(
                          'hoverCompareCartesian',
                          'hoverClosestCartesian',
                          'zoomIn2d', 'zoomOut2d',
                          'lasso2d'),
+                       displaylogo = F,
                        toImageButtonOptions= list(filename = paste0(fileName(),
-                                                                    "_topologyMode_TSNE.png"),
-                                                  format = "png",
+                                                                    "_topologyMode_TSNE.svg"),
+                                                  format = "svg",
                                                   width = 1000,
                                                   height = 600))
             } 
@@ -3710,9 +3769,15 @@ topologyModePlots <- function(input, output, session,
             plt <- ggplotly(plt)
             plt <- plt %>%
               config(plot_ly(), 
+                     modeBarButtonsToRemove = list(
+                       'hoverCompareCartesian',
+                       'hoverClosestCartesian',
+                       'zoomIn2d', 'zoomOut2d',
+                       'lasso2d'),
+                     displaylogo = F,
                      toImageButtonOptions = list(
-                       filename = paste0(fileName(), "_topologyMode_PCA.png"),
-                       format = "png",
+                       filename = paste0(fileName(), "_topologyMode_PCA.svg"),
+                       format = "svg",
                        width = 800,
                        height = 600))
           } else {
@@ -3727,9 +3792,16 @@ topologyModePlots <- function(input, output, session,
                      xaxis = list(title = xaxistext),
                      yaxis = list(title = yaxistext)) %>%
               config(plot_ly(),
+                     modeBarButtonsToRemove = list(
+                       'hoverCompareCartesian',
+                       'hoverClosestCartesian',
+                       'zoomIn2d', 'zoomOut2d',
+                       'lasso2d'),
+                     displaylogo = F,
                      toImageButtonOptions = list(
+                       format = "svg",
                        filename = paste0(fileName(),
-                                         "_topologyMode_clusteredPCA.png")))
+                                         "_topologyMode_clusteredPCA.svg")))
           }
         } else if (dimMode() == "TSNE") {
           colnames(dt_data)[1] <- "geneName"
@@ -3750,8 +3822,8 @@ topologyModePlots <- function(input, output, session,
                      'zoomIn2d', 'zoomOut2d',
                      'lasso2d'),
                    toImageButtonOptions= list(filename = paste0(fileName(),
-                                                                "_topologyMode_TSNE.png"),
-                                              format = "png",
+                                                                "_topologyMode_TSNE.svg"),
+                                              format = "svg",
                                               width = 1000,
                                               height = 600))
         } 
@@ -3934,8 +4006,8 @@ topologyModePlots <- function(input, output, session,
                'zoomIn2d', 'zoomOut2d',
                'lasso2d'),
              toImageButtonOptions= list(filename = paste0(fileName(),
-                                                          "_topologyMode_variantGenesHeatmap.png"),
-                                        format = "png",
+                                                          "_topologyMode_variantGenesHeatmap.svg"),
+                                        format = "svg",
                                         width = width,
                                         height = 500))
     plt

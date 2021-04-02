@@ -4,7 +4,7 @@ appName="correlationAnalyzeR-ShinyApp" # Needs to be same as github repo
 gitLink="https://github.com/millerh1/correlationAnalyzeR-ShinyApp.git"
 
 # Most of this is root-only
-sudo su
+# sudo su
 
 # Get the correct version of R
 apt -y install apt-transport-https software-properties-common
@@ -42,12 +42,12 @@ apt-get -y install libxkbcommon-x11-dev
 
 # Configure shiny server
 appName="correlationAnalyzeR-ShinyApp" # Needs to be same as github repo
-gitLink="https://github.com/millerh1/correlationAnalyzeR-ShinyApp.git"
+#gitLink="https://github.com/millerh1/correlationAnalyzeR-ShinyApp.git"
 #chmod 777 /srv/shiny-server
 #chmod 777 /etc/shiny-server
 #cd /srv/shiny-server
 #rm -rf sample-apps
-git clone $gitLink
+#git clone $gitLink
 #chmod 777 /srv/shiny-server/$appName
 chmod 777 $appName
 cd $appName

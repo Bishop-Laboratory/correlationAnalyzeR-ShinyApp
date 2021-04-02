@@ -121,7 +121,9 @@ singleGeneInputUI <- function(id, label) {
   
   tagList(
     selectizeInput(inputId = ns("primaryGene"), 
-                   label =  label,
+                   label =  span(label, 
+                                 helpButton(message = paste0('Select any gene or gene alias. Delete "BRCA1" and ',
+                                                             'begin typing a gene name to see options.'))),
                    choices = c("Loading ..."), selected = "Loading ...",
                    multiple = F, options = list(maxOptions = 100))
   )
@@ -138,6 +140,7 @@ singleGeneInput <- function(input, output, session,
   # If the selected species changes to mouse, update the selectize options
   observe({
     # speciesSelected <- species()
+    print("Observed")
     speciesSelected <- "Human"
     if (is.null(selected)) {
       selected <- c("BRCA1", "Brca1")
@@ -2835,6 +2838,7 @@ geneVsGeneListModeAnalysis <- function(input, output, session,
     # Initialize progress object
     progress <- shiny::Progress$new()
     progress$set(message = "Validating inputs ... ", value = .1)
+    secondaryGenes <- gsub(secondaryGenes, pattern = "/", replacement = "")
     cleanRes <- cleanInputs(primaryGene = primaryGene,
                             secondaryGenes = secondaryGenes,
                             selectedSpecies = species,
@@ -2847,6 +2851,7 @@ geneVsGeneListModeAnalysis <- function(input, output, session,
       showNotification(ui = "No valid secondary genes provided.", 
                        duration = 8, type = 'error')
       pass <- 0
+      shiny::validate(need({pass != 0}, message = ""))
       progress$close()
     } else if (sigTest & length(unique(cleanRes$secondaryGenes)) < 2) {
       if (length(cleanRes$genesetInputs) != 1) {
