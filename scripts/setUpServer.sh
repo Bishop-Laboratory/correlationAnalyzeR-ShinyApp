@@ -4,7 +4,7 @@ appName="correlationAnalyzeR-ShinyApp" # Needs to be same as github repo
 gitLink="https://github.com/millerh1/correlationAnalyzeR-ShinyApp.git"
 
 # Most of this is root-only
-sudo su
+#sudo su
 
 # Get the correct version of R
 apt -y install apt-transport-https software-properties-common
