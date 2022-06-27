@@ -14,6 +14,7 @@ library(pool)
 library(shinyWidgets)
 library(shinyBS)
 library(shinycssloaders)
+options(repos = c(RSPM = "https://packagemanager.rstudio.com/all/latest", BiocManager::repositories()))
 options(spinner.color = "#337AB7")
 options(shiny.sanitize.errors = FALSE)
 options(future.globals.maxSize = 1e9)
@@ -30,9 +31,9 @@ totalMemory <- benchmarkme::get_ram()
 print(totalMemory)
 
 # Set up multicore plan
-plan(multiprocess)
-totalCores <- parallel::detectCores(logical = FALSE)
-totalThreads <- parallel::detectCores(logical = TRUE)
+plan(multisession)
+totalCores <- min(c(parallel::detectCores(logical = FALSE), 4))
+totalThreads <- min(c(parallel::detectCores(logical = TRUE), 4))
 
 # Make sure tmp dir exists
 if (!dir.exists("www/tmp")) {

@@ -973,11 +973,9 @@ singleModeAnalysis <- function(input, output, session,
         correlationAnalyzeR::analyzeSingleGenes(
           pool = pool,
           genesOfInterest = cleanRes$primaryGene,
-          # Species = cleanRes$selectedSpecies,
           Sample_Type = cleanRes$sampleType,
           GSEA_Type = tolower(gseaType), TERM2GENE = TERM2GENE,
           Tissue = cleanRes$tissueType, crossCompareMode = FALSE,
-          # nperm = 500, sampler = T,
           runGSEA = runGSEA, topPlots = F, returnDataOnly = T
         )
       }, globals = list(
