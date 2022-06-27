@@ -25,20 +25,11 @@ if (! file.exists("data/GlobalData.RData")) {
 }
 load("data/GlobalData.RData")
 
-# credentials <- read.csv("accessKeys.csv", col.names = c("user", "password"),
-#                          stringsAsFactors = FALSE)
-
-
 # Get hardware info for load monitoring
-if (Sys.info()[["sysname"]] == "Windows") {
-  print("Windows OS detected!")
-  totalMemory <- 5
-} else if (Sys.info()[["sysname"]] == "Linux") {
-  print("Linux OS detected!")
-  totalMemory <- benchmarkme::get_ram()
-  print(totalMemory)
-}
-# plan(sequential)
+totalMemory <- benchmarkme::get_ram()
+print(totalMemory)
+
+# Set up multicore plan
 plan(multiprocess)
 totalCores <- parallel::detectCores(logical = FALSE)
 totalThreads <- parallel::detectCores(logical = TRUE)
@@ -56,6 +47,7 @@ pool <- pool::dbPool(
   password = "public-user-password",
   host = "m2600az-db01p.mysql.database.azure.com"
 )
+
 print("Pool connected")
 onStop(function() {
   print("Disconnecting pool now!")
@@ -63,7 +55,6 @@ onStop(function() {
   print("Open connections:")
   print(DBI::dbListConnections(DBI::dbDriver(drv = "MySQL")))
 })
-# DBI::dbListConnections( DBI::dbDriver( drv = "MySQL"))
 
 ui <- tagList(
   tags$head(
