@@ -2,8 +2,10 @@ library(shiny)
 # getCorrelationData(geneList = "ATM", Sample_Type = "Normal_Tissues", Species = "hsapiens")
 # options(shiny.reactlog = TRUE)
 
-runApp(display.mode = "normal", port = 80,
-       host = "0.0.0.0", launch.browser = FALSE)
+runApp(
+  display.mode = "normal", port = 80,
+  host = "0.0.0.0", launch.browser = FALSE
+)
 # runApp(launch.browser = TRUE)
 
 
@@ -23,11 +25,5 @@ runApp(display.mode = "normal", port = 80,
 
 # profvis(prof_output = "profFile.html",{
 #   runApp(launch.browser = T)
-# 
+#
 # })
-
-
-
-
-
-
