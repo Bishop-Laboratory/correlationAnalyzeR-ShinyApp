@@ -1985,7 +1985,7 @@ geneVsGeneModeAnalysis <- function(input, output, session,
     humanGeneOptions = GlobalData$humanGeneOptions,
     # mouseGeneOptions = GlobalData$mouseGeneOptions,
     # species = species,
-    selected = c("BRCA1", "Brca1")
+    selected = c("BRCA2", "Brca2")
   )
   tissueTypeTwo <- callModule(tissueTypeInput, "tissueTypeInputTwo",
     parent_session = parent_session,
@@ -1998,7 +1998,7 @@ geneVsGeneModeAnalysis <- function(input, output, session,
     # mouseTissueOptions = GlobalData$mouseTissueOptions,
     humanTissueOptions = GlobalData$humanTissueOptions,
     # species = species,
-    selected = "Cancer",
+    selected = "Normal",
     tissueType = tissueTypeTwo
   )
 
@@ -2229,9 +2229,7 @@ geneVsGeneModeAnalysis <- function(input, output, session,
         {
           pairedRes <- correlationAnalyzeR::analyzeGenePairs(
             genesOfInterest = genesOfInterest,
-            # Species = cleanResOne$selectedSpecies,
             returnDataOnly = T, runGSEA = F,
-            # nperm = 500, sampler = TRUE,
             crossCompareMode = T, pool = pool
           )
           # plotListHeat <- list()
@@ -2447,6 +2445,7 @@ geneVsGeneModePlots <- function(input, output, session,
   geneVSTBoxplot1 <- reactiveVal()
   geneVSTBoxplot2 <- reactiveVal()
   geneVSTData <- reactiveVal()
+  corrVSTPlotData <- reactiveVal()
 
   # Only for normal mode
   VSTData <- reactiveVal()
@@ -2467,12 +2466,14 @@ geneVsGeneModePlots <- function(input, output, session,
     req(dataTables$geneVsGeneModeData())
     future <- FALSE # Massive memory leak with this mode for some reason...
     if (class(dataTables$geneVsGeneModeData()) == "promise") {
+      message("Promise ~~~~~~~~~~~~~~~~~~~~~~~~~")
       dataTables$geneVsGeneModeData() %...>% (function(dataList) {
         preprocessed(FALSE)
         processed(FALSE)
         correlations(NULL)
         correlatedPathwaysDF(NULL)
         corrPlot(NULL)
+        corrVSTPlotData(NULL)
         heatReady(FALSE)
         heatPathsVar(NULL)
         heatPathsSim(NULL)
@@ -2638,6 +2639,7 @@ geneVsGeneModePlots <- function(input, output, session,
       timerStart(Sys.time())
       timerNow(0)
       tenSec(FALSE)
+      corrVSTPlotData(NULL)
 
       downloadsList$init <- FALSE
       downloadsList$ready <- FALSE
@@ -2747,6 +2749,7 @@ geneVsGeneModePlots <- function(input, output, session,
         on.exit(dataList$progress$close())
         correlations(pairedRes[["processedCorrelationsFrame"]])
         corrPlot(pairedRes[["compared"]][["correlationPlotBin"]])
+        corrVSTPlotData(pairedRes[["compared"]][["VST_corrPlot"]])
         VSTData(pairedRes[["compared"]][["VST_Data"]])
         # No VST for you!
         geneVSTBoxplot1(NULL)
@@ -2809,6 +2812,7 @@ geneVsGeneModePlots <- function(input, output, session,
       )
     }
   })
+  
 
   # Render UI
   output$correlationsUI <- renderUI({
@@ -2872,16 +2876,29 @@ geneVsGeneModePlots <- function(input, output, session,
       tagList(
         h1("Gene vs Gene Results"),
         toAdd,
-        # hr(),
-        # h2("Compared gene expression"),
-        # hr(),
-        # fluidRow(
-        #   column(width = 10, offset = 1,
-        #          plotOutput(ns("geneVSTBoxplot1")))),
-        # br(),
-        # br(),
         hr(),
-        h2("Compared correlations"),
+        h2(span(
+          "Compared gene expression", helpButton(message = paste0(
+            "Correlation of gene expression (VST-transformed counts) across conditions."
+          )))),
+        hr(),
+        fluidRow(
+          column(
+            width = 7, offset = 2,
+            tagList(
+              withSpinner(type = 7, plotOutput(ns("vstScatter"))),
+              hr()
+            )
+          )
+        ),
+        br(),
+        br(),
+        hr(),
+        h2(span(
+          "Compared correlations", helpButton(message = paste0(
+            "Correlation of genome-wide correlations for genes/conditions of interest.",
+            " See documentation for additional detail."
+          )))),
         hr(),
         fluidRow(
           column(
@@ -2978,7 +2995,7 @@ geneVsGeneModePlots <- function(input, output, session,
       )
     }
   })
-
+  
   # Build shared UI elements
   output$geneVSTBoxplot1 <- renderPlot({
     req(geneVSTBoxplot1())
@@ -3014,6 +3031,15 @@ geneVsGeneModePlots <- function(input, output, session,
       invalidateLater(1000)
     }
     print(corrPlot())
+  })
+  output$vstScatter <- renderPlot({
+    req((!groupMode()))
+    if (!tenSec()) {
+      invalidateLater(1000)
+    }
+    print("Inside vstScatter")
+    validate(need(! is.null(corrVSTPlotData()), message = "Cannot provide expression correlation when genes are identical."))
+    print(corrVSTPlotData()$corrPlot_all)
   })
   output$heatGenesVar <- renderPlot({
     req(downloadsList$downloadDataVST)

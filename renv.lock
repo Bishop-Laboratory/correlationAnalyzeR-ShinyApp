@@ -5,6 +5,30 @@
       {
         "Name": "RSPM",
         "URL": "https://packagemanager.rstudio.com/all/latest"
+      },
+      {
+        "Name": "BioCsoft",
+        "URL": "https://bioconductor.org/packages/3.15/bioc"
+      },
+      {
+        "Name": "BioCann",
+        "URL": "https://bioconductor.org/packages/3.15/data/annotation"
+      },
+      {
+        "Name": "BioCexp",
+        "URL": "https://bioconductor.org/packages/3.15/data/experiment"
+      },
+      {
+        "Name": "BioCworkflows",
+        "URL": "https://bioconductor.org/packages/3.15/workflows"
+      },
+      {
+        "Name": "BioCbooks",
+        "URL": "https://bioconductor.org/packages/3.15/books"
+      },
+      {
+        "Name": "RSPM",
+        "URL": "https://packagemanager.rstudio.com/all/latest"
       }
     ]
   },
@@ -984,8 +1008,8 @@
       "RemoteUsername": "Bishop-Laboratory",
       "RemoteRepo": "correlationAnalyzeR",
       "RemoteRef": "master",
-      "RemoteSha": "a405e878c48d84b8691069c05b142e3435ce3b8d",
-      "Hash": "96f67bc1f214f8ceeeb344a6e83722cb",
+      "RemoteSha": "1552fdc0289945e308e52fe0cc8d6e30e029a2c9",
+      "Hash": "2131f165391883c3e9fbe45dc00d0fc2",
       "Requirements": [
         "DBI",
         "DESeq2",
